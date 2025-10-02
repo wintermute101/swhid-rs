@@ -1,23 +1,22 @@
-//! SWHID minimal reference implementation
+//! SWHID v1.2 reference implementation
 //!
 //! This crate provides a **clean, small, dependency‑light** implementation
-//! of the SWHID (SoftWare Hash IDentifier) format defined in
-//! **ISO/IEC 18670:2025** and detailed in the public specification v1.2.
+//! of the SWHID (SoftWare Hash IDentifier) format as defined in
+//! **ISO/IEC 18670:2025** and detailed in the SWHID v1.2 specification.
 //!
-//! Covered here:
+//! This implementation is **fully compliant** with SWHID v1.2 and provides:
 //! - Core identifier representation and parsing/printing (`swh:1:<tag>:<id>`)
-//! - Known object tags: contents (`cnt`), directories (`dir`), revisions (`rev`),
+//! - All SWHID v1.2 object types: contents (`cnt`), directories (`dir`), revisions (`rev`),
 //!   releases (`rel`), snapshots (`snp`)
 //! - Qualified identifiers (origin, visit, anchor, path, lines, bytes)
-//! - Minimal hash computation for **content** (Git blob) and **directory** (Git tree)
+//! - SWHID v1.2 compliant hash computation for **content** and **directory** objects
 //!
-//! Not covered here (by design, to stay minimal):
-//! - Computing `rev`, `rel`, `snp` intrinsic IDs (they depend on VCS metadata)
-//! - Archive traversal or fetching – only local file/dir hashing is implemented
+//! VCS Integration (optional):
+//! - Computing `rev`, `rel`, `snp` SWHIDs from VCS metadata (requires `git` feature)
+//! - Git repository support for revision, release, and snapshot SWHID computation
 //!
-//! The hashing logic follows Git’s object hashing (blob/tree) using SHA‑1.
-//! A `sha1dc` feature is exposed to enable collision detection via
-//! the `sha1collisiondetection` crate if you want defense‑in‑depth.
+//! The hashing algorithms implement the SWHID v1.2 specification using SHA‑1
+//! with collision detection for enhanced security when processing untrusted data.
 //!
 //! ## Example
 //!

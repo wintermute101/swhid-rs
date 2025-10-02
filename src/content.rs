@@ -1,7 +1,10 @@
 use crate::core::{ObjectType, Swhid};
-use crate::hash::hash_blob;
+use crate::hash::hash_content;
 
-/// In‑memory file content (minimal helper).
+/// SWHID v1.2 content object for computing content SWHIDs.
+/// 
+/// This struct represents file content data and provides methods to compute
+/// SWHID v1.2 compliant content identifiers according to the specification.
 #[derive(Debug, Clone)]
 pub struct Content<'a> {
     bytes: Cow<'a, [u8]>,
@@ -10,6 +13,9 @@ pub struct Content<'a> {
 use std::borrow::Cow;
 
 impl<'a> Content<'a> {
+    /// Create a new Content object from byte data.
+    /// 
+    /// This implements SWHID v1.2 content object creation for any byte data.
     pub fn from_bytes(bytes: impl Into<Cow<'a, [u8]>>) -> Self {
         Self { bytes: bytes.into() }
     }
@@ -20,8 +26,12 @@ impl<'a> Content<'a> {
     pub fn len(&self) -> usize { self.bytes.len() }
     pub fn is_empty(&self) -> bool { self.bytes.is_empty() }
 
+    /// Compute the SWHID v1.2 content identifier for this content.
+    /// 
+    /// This implements the SWHID v1.2 content hashing algorithm, which
+    /// is compatible with Git's blob format for content objects.
     pub fn swhid(&self) -> Swhid {
-        let digest = hash_blob(&self.bytes);
+        let digest = hash_content(&self.bytes);
         Swhid::new(ObjectType::Content, digest)
     }
 }

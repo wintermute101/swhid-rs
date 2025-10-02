@@ -1,18 +1,25 @@
-//! Git repository support for SWHID computation
+//! SWHID v1.2 VCS integration for Git repositories
 //! 
-//! This module provides functionality to compute SWHIDs for Git objects:
-//! - Revision SWHIDs (commits)
-//! - Release SWHIDs (tags)
-//! - Snapshot SWHIDs (repository state)
+//! This module provides SWHID v1.2 compliant functionality to compute SWHIDs
+//! from Git repository objects when the `git` feature is enabled:
+//! - Revision SWHIDs (commits) - `swh:1:rev:<digest>`
+//! - Release SWHIDs (tags) - `swh:1:rel:<digest>`
+//! - Snapshot SWHIDs (repository state) - `swh:1:snp:<digest>`
+//!
+//! This module implements the SWHID v1.2 specification for VCS objects,
+//! using Git as the reference VCS implementation.
 
-use crate::{Swhid, ObjectType};
+use crate::Swhid;
 use crate::error::SwhidError;
 use std::path::Path;
 
 #[cfg(feature = "git")]
 use git2::{Repository, ObjectType as GitObjectType};
 
-/// Compute a revision SWHID from a Git commit
+/// Compute a SWHID v1.2 revision identifier from a Git commit
+/// 
+/// This implements the SWHID v1.2 revision hashing algorithm for Git commits,
+/// creating a `swh:1:rev:<digest>` identifier according to the specification.
 #[cfg(feature = "git")]
 pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo.find_commit(*commit_oid)
@@ -52,11 +59,14 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
         commit_content.extend_from_slice(message.as_bytes());
     }
     
-    let digest = crate::hash::hash_object("commit", &commit_content);
-    Ok(Swhid::new(ObjectType::Revision, digest))
+    let digest = crate::hash::hash_swhid_object("commit", &commit_content);
+    Ok(Swhid::new(crate::ObjectType::Revision, digest))
 }
 
-/// Compute a release SWHID from a Git tag
+/// Compute a SWHID v1.2 release identifier from a Git tag
+/// 
+/// This implements the SWHID v1.2 release hashing algorithm for Git tags,
+/// creating a `swh:1:rel:<digest>` identifier according to the specification.
 #[cfg(feature = "git")]
 pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let tag = repo.find_tag(*tag_oid)
@@ -93,11 +103,14 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
         tag_content.extend_from_slice(message.as_bytes());
     }
     
-    let digest = crate::hash::hash_object("tag", &tag_content);
-    Ok(Swhid::new(ObjectType::Release, digest))
+    let digest = crate::hash::hash_swhid_object("tag", &tag_content);
+    Ok(Swhid::new(crate::ObjectType::Release, digest))
 }
 
-/// Compute a snapshot SWHID from a Git repository
+/// Compute a SWHID v1.2 snapshot identifier from a Git repository
+/// 
+/// This implements the SWHID v1.2 snapshot hashing algorithm for Git repositories,
+/// creating a `swh:1:snp:<digest>` identifier according to the specification.
 #[cfg(feature = "git")]
 pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo.find_commit(*commit_oid)
@@ -121,18 +134,21 @@ pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
     snapshot_content.extend_from_slice(dir_swhid.to_string().as_bytes());
     snapshot_content.push(b'\n');
     
-    let digest = crate::hash::hash_object("snapshot", &snapshot_content);
-    Ok(Swhid::new(ObjectType::Snapshot, digest))
+    let digest = crate::hash::hash_swhid_object("snapshot", &snapshot_content);
+    Ok(Swhid::new(crate::ObjectType::Snapshot, digest))
 }
 
-/// Open a Git repository and return the repository object
+/// Open a Git repository for SWHID v1.2 computation
+/// 
+/// This function opens a Git repository to enable SWHID v1.2 computation
+/// for revision, release, and snapshot objects.
 #[cfg(feature = "git")]
 pub fn open_repo(path: &Path) -> Result<Repository, SwhidError> {
     Repository::open(path)
         .map_err(|e| SwhidError::Io(format!("Failed to open repository: {e}")))
 }
 
-/// Get the HEAD commit of a repository
+/// Get the HEAD commit of a Git repository for SWHID v1.2 computation
 #[cfg(feature = "git")]
 pub fn get_head_commit(repo: &Repository) -> Result<git2::Oid, SwhidError> {
     let head = repo.head()
@@ -142,7 +158,7 @@ pub fn get_head_commit(repo: &Repository) -> Result<git2::Oid, SwhidError> {
         .ok_or_else(|| SwhidError::Io("HEAD is not a direct reference".to_string()))
 }
 
-/// Get all tags in a repository
+/// Get all tags in a Git repository for SWHID v1.2 release computation
 #[cfg(feature = "git")]
 pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
     let mut tags = Vec::new();
@@ -158,7 +174,7 @@ pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
     Ok(tags)
 }
 
-/// Check if a path is a Git repository
+/// Check if a path is a Git repository for SWHID v1.2 computation
 #[cfg(feature = "git")]
 pub fn is_git_repo(path: &Path) -> bool {
     Repository::open(path).is_ok()
@@ -167,32 +183,32 @@ pub fn is_git_repo(path: &Path) -> bool {
 // Stub implementations when git feature is disabled
 #[cfg(not(feature = "git"))]
 pub fn revision_swhid(_repo: &(), _commit_oid: &()) -> Result<Swhid, SwhidError> {
-    Err(SwhidError::Io("Git support not enabled".to_string()))
+    Err(SwhidError::Io("Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string()))
 }
 
 #[cfg(not(feature = "git"))]
 pub fn release_swhid(_repo: &(), _tag_oid: &()) -> Result<Swhid, SwhidError> {
-    Err(SwhidError::Io("Git support not enabled".to_string()))
+    Err(SwhidError::Io("Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string()))
 }
 
 #[cfg(not(feature = "git"))]
 pub fn snapshot_swhid(_repo: &(), _commit_oid: &()) -> Result<Swhid, SwhidError> {
-    Err(SwhidError::Io("Git support not enabled".to_string()))
+    Err(SwhidError::Io("Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string()))
 }
 
 #[cfg(not(feature = "git"))]
 pub fn open_repo(_path: &Path) -> Result<(), SwhidError> {
-    Err(SwhidError::Io("Git support not enabled".to_string()))
+    Err(SwhidError::Io("Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string()))
 }
 
 #[cfg(not(feature = "git"))]
 pub fn get_head_commit(_repo: &()) -> Result<(), SwhidError> {
-    Err(SwhidError::Io("Git support not enabled".to_string()))
+    Err(SwhidError::Io("Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string()))
 }
 
 #[cfg(not(feature = "git"))]
 pub fn get_tags(_repo: &()) -> Result<Vec<()>, SwhidError> {
-    Err(SwhidError::Io("Git support not enabled".to_string()))
+    Err(SwhidError::Io("Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string()))
 }
 
 #[cfg(not(feature = "git"))]

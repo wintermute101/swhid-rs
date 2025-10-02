@@ -3,9 +3,9 @@ name = "swhid"
 version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Reference-quality, minimal implementation of SWHID (ISO/IEC 18670) parsing and core hashing (content, directory)"
+description = "SWHID v1.2 reference implementation - Complete SWHID (ISO/IEC 18670:2025) parsing and hashing with VCS integration"
 repository = "https://example.org/swhid-rs"
-keywords = ["swhid", "hash", "identifier", "software", "iso18670"]
+keywords = ["swhid", "swhid-v1.2", "iso18670", "software-heritage", "identifier", "hash", "vcs", "git"]
 categories = ["encoding", "data-structures", "parsing"]
 
 [features]

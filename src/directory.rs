@@ -4,12 +4,12 @@ use std::io;
 use std::path::Path;
 
 use crate::core::{ObjectType, Swhid};
-use crate::hash::{hash_blob, hash_object};
+use crate::hash::{hash_content, hash_swhid_object};
 
-/// Options for directory walking / hashing.
+/// Options for SWHID v1.2 directory walking and hashing.
 #[derive(Debug, Clone, Default)]
 pub struct WalkOptions {
-    /// Whether to follow symlinks (note: not recommended; SWH uses link targets)
+    /// Whether to follow symlinks (note: not recommended; SWHID v1.2 uses link targets)
     pub follow_symlinks: bool,
     /// Exclude glob patterns (very minimal: literal suffix match)
     pub exclude_suffixes: Vec<String>,
@@ -18,8 +18,8 @@ pub struct WalkOptions {
 #[derive(Debug, Clone)]
 struct Entry {
     name: Vec<u8>, // raw bytes (no encoding assumptions)
-    mode: u32,     // git tree mode
-    id: [u8; 20],  // object id
+    mode: u32,     // SWHID v1.2 tree mode (compatible with Git tree mode)
+    id: [u8; 20],  // SWHID object id
 }
 
 fn is_excluded(name: &[u8], opts: &WalkOptions) -> bool {
@@ -28,9 +28,12 @@ fn is_excluded(name: &[u8], opts: &WalkOptions) -> bool {
     opts.exclude_suffixes.iter().any(|suf| s.ends_with(suf))
 }
 
-/// Compute the Git tree payload (concatenation of entries).
+/// Compute the SWHID v1.2 directory payload (concatenation of entries).
+/// 
+/// This implements the SWHID v1.2 directory tree format, which is compatible
+/// with Git's tree format for directory objects.
 fn dir_payload(mut children: Vec<Entry>) -> Vec<u8> {
-    // Git sorts by raw bytes of filename (no path separators here).
+    // SWHID v1.2 sorts by raw bytes of filename (no path separators here).
     children.sort_by(|a, b| a.name.cmp(&b.name));
     let mut out = Vec::new();
     for e in children {
@@ -78,14 +81,14 @@ fn hash_dir_inner(path: &Path, opts: &WalkOptions) -> io::Result<[u8; 20]> {
             let id = hash_dir_inner(&entry.path(), opts)?;
             children.push(Entry{ name: name_bytes, mode: 0o040000, id });
         } else if ft.is_symlink() {
-            // The blob is the link target bytes
+            // The content is the link target bytes
             let target = fs::read_link(entry.path())?;
             let bytes = target.as_os_str().as_encoded_bytes();
-            let id = hash_blob(bytes);
+            let id = hash_content(bytes);
             children.push(Entry{ name: name_bytes, mode: symlink_mode(), id });
         } else if ft.is_file() {
             let bytes = fs::read(entry.path())?;
-            let id = hash_blob(&bytes);
+            let id = hash_content(&bytes);
             let mode = path_file_mode(&md);
             children.push(Entry{ name: name_bytes, mode, id });
         } else {
@@ -94,10 +97,13 @@ fn hash_dir_inner(path: &Path, opts: &WalkOptions) -> io::Result<[u8; 20]> {
         }
     }
     let payload = dir_payload(children);
-    Ok(hash_object("tree", &payload))
+    Ok(hash_swhid_object("tree", &payload))
 }
 
-/// Helper wrapper to compute directory SWHID
+/// SWHID v1.2 directory object for computing directory SWHIDs.
+/// 
+/// This struct represents a directory tree and provides methods to compute
+/// SWHID v1.2 compliant directory identifiers according to the specification.
 #[derive(Debug, Clone)]
 pub struct Directory<'a> {
     root: &'a Path,
@@ -105,9 +111,18 @@ pub struct Directory<'a> {
 }
 
 impl<'a> Directory<'a> {
+    /// Create a new Directory object for the given path.
+    /// 
+    /// This implements SWHID v1.2 directory object creation for any directory.
     pub fn new(root: &'a Path) -> Self { Self { root, opts: WalkOptions::default() } }
+    
+    /// Configure directory walking options.
     pub fn with_options(mut self, opts: WalkOptions) -> Self { self.opts = opts; self }
 
+    /// Compute the SWHID v1.2 directory identifier for this directory.
+    /// 
+    /// This implements the SWHID v1.2 directory hashing algorithm, which
+    /// is compatible with Git's tree format for directory objects.
     pub fn swhid(&self) -> Result<Swhid, crate::error::SwhidError> {
         let id = hash_dir_inner(self.root, &self.opts).map_err(|e| crate::error::SwhidError::Io(e.to_string()))?;
         Ok(Swhid::new(ObjectType::Directory, id))
