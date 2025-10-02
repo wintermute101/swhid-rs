@@ -1,48 +1,29 @@
-use std::io;
+use thiserror::Error;
 
-#[derive(Debug)]
+/// Errors that may occur while parsing SWHIDs or computing hashes.
+#[derive(Debug, Error)]
 pub enum SwhidError {
-    Io(io::Error),
+    #[error("invalid SWHID format: {0}")]
     InvalidFormat(String),
-    InvalidNamespace(String),
+
+    #[error("invalid URI scheme (expected `swh`): {0}")]
+    InvalidScheme(String),
+
+    #[error("unsupported SWHID version: {0}")]
     InvalidVersion(String),
+
+    #[error("invalid object type: {0}")]
     InvalidObjectType(String),
-    InvalidHash(String),
-    InvalidHashLength(usize),
-    InvalidPath(String),
-    DuplicateEntry(String),
-    UnsupportedOperation(String),
-    InvalidQualifier(String),
-    InvalidQualifierValue(String),
-    UnknownQualifier(String),
-    InvalidInput(String),
-}
 
-impl From<io::Error> for SwhidError {
-    fn from(err: io::Error) -> Self {
-        SwhidError::Io(err)
-    }
-}
+    #[error("invalid digest (expected 40 hex chars): {0}")]
+    InvalidDigest(String),
 
-impl std::fmt::Display for SwhidError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SwhidError::Io(e) => write!(f, "I/O error: {}", e),
-            SwhidError::InvalidFormat(s) => write!(f, "Invalid format: {}", s),
-            SwhidError::InvalidNamespace(s) => write!(f, "Invalid namespace: {}", s),
-            SwhidError::InvalidVersion(s) => write!(f, "Invalid version: {}", s),
-            SwhidError::InvalidObjectType(s) => write!(f, "Invalid object type: {}", s),
-            SwhidError::InvalidHash(s) => write!(f, "Invalid hash: {}", s),
-            SwhidError::InvalidHashLength(len) => write!(f, "Invalid hash length: {} (expected 40)", len),
-            SwhidError::InvalidPath(s) => write!(f, "Invalid path: {}", s),
-            SwhidError::DuplicateEntry(s) => write!(f, "Duplicate entry: {}", s),
-            SwhidError::UnsupportedOperation(s) => write!(f, "Unsupported operation: {}", s),
-            SwhidError::InvalidQualifier(s) => write!(f, "Invalid qualifier: {}", s),
-            SwhidError::InvalidQualifierValue(s) => write!(f, "Invalid qualifier value: {}", s),
-            SwhidError::UnknownQualifier(s) => write!(f, "Unknown qualifier: {}", s),
-            SwhidError::InvalidInput(s) => write!(f, "Invalid input: {}", s),
-        }
-    }
-}
+    #[error("invalid qualifier key: {0}")]
+    InvalidQualifierKey(String),
 
-impl std::error::Error for SwhidError {} 
+    #[error("invalid qualifier value for `{key}`: {value}")]
+    InvalidQualifierValue { key: String, value: String },
+
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+}

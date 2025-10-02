@@ -1,49 +1,31 @@
 [package]
-name = "swhid-lib"
-version = "0.1.0"
+name = "swhid"
+version = "0.2.0"
 edition = "2021"
-description = "Minimal reference implementation of Software Hash Identifier (SWHID) computation"
-license = "MIT"
-repository = "https://github.com/your-username/swhid-rs"
-keywords = ["swhid", "software-hash", "hash", "identifier", "reference"]
-categories = ["data-structures", "encoding"]
-
-[dependencies]
-sha1-checked = "0.10.0"
-sha2 = "0.10.8"
-hex = "0.4.3"
-tempfile = "3.8.1"
-clap = { version = "4.0", features = ["derive"] }
-
-[dependencies.git2]
-version = "0.18"
-optional = true
+license = "MIT OR Apache-2.0"
+description = "Reference-quality, minimal implementation of SWHID (ISO/IEC 18670) parsing and core hashing (content, directory)"
+repository = "https://example.org/swhid-rs"
+keywords = ["swhid", "hash", "identifier", "software", "iso18670"]
+categories = ["encoding", "data-structures", "parsing"]
 
 [features]
 default = []
-git = ["git2"]
+serde = ["dep:serde"]
+
+[dependencies]
+hex = "0.4"
+thiserror = "1"
+percent-encoding = "2"
+url = { version = "2", optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+clap = { version = "4", features = ["derive"] }
+sha1collisiondetection = { version = "0.3" }
+
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
-criterion = "0.7.0"
-
-[[bin]]
-name = "swhid-cli"
-path = "src/main.rs"
-
-[lib]
-name = "swhid"
-path = "src/lib.rs" 
-
-[[bench]]
-name = "benchmarks"
-harness = false
-
-[profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-
-[profile.bench]
-opt-level = 3
-lto = true
-codegen-units = 1 
+tempfile = "3"
+assert_fs = "1"
+predicates = "3"

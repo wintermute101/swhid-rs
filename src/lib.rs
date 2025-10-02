@@ -1,47 +1,54 @@
-//! Minimal reference implementation of Software Hash Identifier (SWHID) computation
-//! 
-//! This library provides the SWHID functionality without extra features like
-//! archive processing, complex Git operations, or performance optimizations.
-//! 
-//! ## Core SWHID Types
-//! 
-//! - **Content SWHID**: Compute SWHIDs for individual files
-//! - **Directory SWHID**: Compute SWHIDs for directory trees
-//! - **Basic SWHID**: Core SWHID format: `swh:1:obj_type:hash`
-//! - **Qualified SWHID**: SWHIDs with qualifiers like origin, path, lines, bytes
-//! 
-//! ## Usage
-//! 
-//! ```rust
-//! use swhid::{Swhid, ObjectType, QualifiedSwhid};
-//! 
-//! // Create a SWHID manually
-//! let hash = [0u8; 20];
-//! let swhid = Swhid::new(ObjectType::Content, hash);
-//! assert_eq!(swhid.to_string(), "swh:1:cnt:0000000000000000000000000000000000000000");
-//! 
-//! // Create a qualified SWHID
-//! let qualified = QualifiedSwhid::new(swhid)
-//!     .with_origin("https://github.com/user/repo".to_string())
-//!     .with_path(b"/src/main.rs".to_vec())
-//!     .with_lines(10, Some(20))
-//!     .with_bytes(5, Some(10));
-//! 
-//! // Parse a SWHID from string
-//! let parsed = Swhid::from_string("swh:1:dir:0000000000000000000000000000000000000000").unwrap();
-//! assert_eq!(parsed.object_type(), ObjectType::Directory);
+//! SWHID minimal reference implementation
+//!
+//! This crate provides a **clean, small, dependency‑light** implementation
+//! of the SWHID (SoftWare Hash IDentifier) format defined in
+//! **ISO/IEC 18670:2025** and detailed in the public specification v1.2.
+//!
+//! Covered here:
+//! - Core identifier representation and parsing/printing (`swh:1:<tag>:<id>`)
+//! - Known object tags: contents (`cnt`), directories (`dir`), revisions (`rev`),
+//!   releases (`rel`), snapshots (`snp`)
+//! - Qualified identifiers (origin, visit, anchor, path, lines, bytes)
+//! - Minimal hash computation for **content** (Git blob) and **directory** (Git tree)
+//!
+//! Not covered here (by design, to stay minimal):
+//! - Computing `rev`, `rel`, `snp` intrinsic IDs (they depend on VCS metadata)
+//! - Archive traversal or fetching – only local file/dir hashing is implemented
+//!
+//! The hashing logic follows Git’s object hashing (blob/tree) using SHA‑1.
+//! A `sha1dc` feature is exposed to enable collision detection via
+//! the `sha1collisiondetection` crate if you want defense‑in‑depth.
+//!
+//! ## Example
+//!
+//! ```no_run
+//! use swhid::{Content, Directory, ObjectType, Swhid, QualifiedSwhid};
+//!
+//! // Content hash
+//! let blob = Content::from_bytes(b"Hello, world!");
+//! let s = blob.swhid();
+//! assert_eq!(s.to_string(), "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684");
+//!
+//! // Parse & format
+//! let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+//! assert_eq!(core.object_type(), ObjectType::Content);
+//!
+//! // Qualified identifiers
+//! let q = QualifiedSwhid::new(core).with_path("/src/lib.rs");
+//! assert!(q.to_string().contains(";path=/src/lib.rs"));
 //! ```
-//! 
-
-pub mod swhid;
+//!
+pub mod core;
+pub mod qualifier;
 pub mod hash;
 pub mod content;
 pub mod directory;
 pub mod error;
-pub mod computer;
 
-pub use swhid::{Swhid, ObjectType, QualifiedSwhid};
-pub use error::SwhidError;
-pub use computer::SwhidComputer;
-pub use content::Content;
-pub use directory::Directory; 
+pub use crate::core::{ObjectType, Swhid};
+pub use crate::qualifier::{QualifiedSwhid, LineRange, ByteRange};
+pub use crate::content::Content;
+pub use crate::directory::{Directory, WalkOptions};
+
+#[cfg(feature="serde")]
+pub use serde::{Serialize, Deserialize};

@@ -1,384 +1,42 @@
-# SWHID - Minimal Reference Implementation
+# swhid — minimal SWHID (ISO/IEC 18670) implementation in Rust
 
-A minimal, clean reference implementation of Software Hash Identifier (SWHID) computation in Rust.
+This crate offers a **clean**, **minimal**, and **well‑documented** implementation
+of the SWHID core format and key qualifiers. It aims to be a good **reference**
+for implementers who need a small, dependency‑light codebase to:
+- parse / pretty‑print SWHIDs,
+- compute **content** (`cnt`) and **directory** (`dir`) intrinsic identifiers locally,
+- assemble **qualified** identifiers (origin/visit/anchor/path/lines/bytes).
 
-## Overview
-
-This library provides the **SWHID functionality** according to the official SWHID specification v1.2. It serves as a clean reference implementation that can be used as a dependency for full-featured toos. A minimal CLI interface is provided as `swhid-rs`, as well as a test harness to compare with other implementations: these components are for your convenience and are not part of the reference implementation.
-
-## Core SWHID Types
-
-SWHIDs are persistent identifiers for software artifacts that follow the format:
-```
-swh:1:<object_type>:<40_character_hex_hash>
-```
-
-Where:
-- `swh` is the namespace (always "swh")
-- `1` is the scheme version (always 1)
-- `<object_type>` is one of: `cnt`, `dir`, `rev`, `rel`, `snp`
-- `<40_character_hex_hash>` is the SHA1 hash of the object
-
-### Supported Object Types
-
-According to the official SWHID specification:
-
-- **`cnt`** - **Content**: Individual files and their contents
-- **`dir`** - **Directory**: Directory trees and their structure
-- **`rev`** - **Revision**: Git revisions and commits
-- **`rel`** - **Release**: Git releases and tags
-- **`snp`** - **Snapshot**: Git snapshots and repository states
-
-### Qualified SWHIDs
-
-The library also supports **Qualified SWHIDs** with qualifiers according to the specification:
-
-- **`origin`** - Software origin URI where the object was found
-- **`visit`** - Snapshot SWHID corresponding to a specific repository visit
-- **`anchor`** - Reference node (dir, rev, rel, or snp) for path resolution
-- **`path`** - Absolute file path relative to the anchor
-- **`lines`** - Line range (start-end or single line) within content
-- **`bytes`** - Byte range (start-end or single byte) within content
-
-**Format**: `swh:1:<object_type>:<hash>[;qualifier=value]*`
-
-**Example**: `swh:1:cnt:abc123...;origin=https://github.com/user/repo;path=/src/main.rs;lines=10-20;bytes=5-10`
+> ℹ️ For the full normative specification see the public spec v1.2 and the ISO/IEC 18670:2025 standard.
 
 ## Features
+- `core` — `Swhid` type with `Display`/`FromStr`, robust validation.
+- `qualifier` — `QualifiedSwhid` with known qualifiers; preserves unknown key/values.
+- `hash` — Git‑compatible object hashing (`blob`, `tree`) using collision-detecting SHA‑1.
+- `content` — compute `swh:1:cnt:<digest>` for in‑memory bytes.
+- `directory` — compute `swh:1:dir:<digest>` for a local directory tree.
+- `serde` (feature) — opt‑in `Serialize`/`Deserialize` for public types.
 
-- **Complete Core SWHID Support**: All 5 core object types from the specification
-- **Qualified SWHID Support**: Full qualifier support (origin, visit, anchor, path, lines, bytes)
-- **Minimal Dependencies**: Only essential crates (sha1-checked, hex)
-- **Reference Implementation**: Clean, readable code for SWHID specification
-- **Specification Compliant**: Follows SWHID v1.2 specification exactly
+## CLI
+```
+# content from file
+swhid content --file README.md
 
-## What's Included
+# content from stdin
+cat README.md | swhid content
 
-In the core library
-- **Core SWHID computation** for all 5 object types
-- **Qualified SWHID support** with all 6 qualifiers
+# directory recursively
+swhid dir .
 
-In the CLI as a default
-- **File and directory processing** with file attributes and symlink support (specification-compliant)
-- **Exclude patterns** for directory traversal
-- **SWHID verification** functionality
-- **Stdin support** for content processing
-
-In the cli via conditional compilation (CLI features)
-- **Git support** to compute SWHID on git repositories (snapshot, revision, release computation)
-
-## What's NOT Included
-
-The CLI is provided as a minimal interface to the library, and it does not feature functionality that you may find in other tools, like:
-
-- Archive processing (tar, zip, etc.)
-- Recursive directory printing
-- Performance optimizations (caching, statistics)
-
-## Installation
-
-### From Source
-
-```bash
-git clone <repository-url>
-cd swhid-rs
-git checkout minimal-reference-impl
-
-# Build minimal version
-cargo build
-
-# Build with Git support
-cargo build --features git
+# parse (qualified) SWHID and print in canonical order
+swhid parse 'swh:1:cnt:...;path=/src/lib.rs;lines=9-15'
 ```
 
-### Using Cargo
-
-Add to your `Cargo.toml`:
-```toml
-[dependencies]
-swhid-lib = "0.1.0"
-
-# For Git support in CLI
-swhid-lib = { version = "0.1.0", features = ["git"] }
-```
-
-## Features
-
-Rust features allow conditional compilation of additional functionality:
-
-- **Default**: Minimal SWHID functionality
-- **`git`**: Enable Git support in CLI (revision, release, snapshot SWHIDs)
-
-### Building with Features
-
-```bash
-# Minimal build (default)
-cargo build
-
-# With Git support
-cargo build --features git
-
-# CLI with Git support
-cargo build --bin swhid-cli --features git
-```
-
-## Usage
-
-### Command-Line Interface
-
-The library includes a CLI tool for easy SWHID computation:
-
-```bash
-# Build the CLI (minimal version)
-cargo build --bin swhid-cli
-
-# Build the CLI with Git support
-cargo build --bin swhid-cli --features git
-```
-
-#### Basic Usage
-
-```bash
-# Compute SWHID for a file
-./target/debug/swhid-cli file.txt
-
-# Compute SWHID for a directory
-./target/debug/swhid-cli directory/
-
-# Compute SWHID from stdin
-echo "Hello, World!" | ./target/debug/swhid-cli -
-
-# Verify a SWHID
-./target/debug/swhid-cli -v "swh:1:cnt:abc123..." file.txt
-
-# Exclude certain files from directory processing
-./target/debug/swhid-cli -e "*.tmp" -e "*.log" directory/
-
-# Get help
-./target/debug/swhid-cli --help
-```
-
-#### Git Support (Feature Flag)
-
-When built with `--features git`, the CLI supports Git-based SWHIDs:
-
-```bash
-# Compute revision SWHID for a specific commit
-./target/debug/swhid-cli --revision HEAD repository/
-
-# Compute release SWHID for a specific tag
-./target/debug/swhid-cli --release v1.0.0 repository/
-
-# Compute snapshot SWHID for entire repository
-./target/debug/swhid-cli --snapshot repository/
-```
-
-#### CLI Options
-
-**Basic Options:**
-- `-o, --obj-type <TYPE>`: Object type (auto, content, directory) [default: auto]
-- `--dereference`: If the CLI is called on a symlink, follow it
-- `--no-dereference`: If the CLI is called on a symlink, don't follow it
-- `--filename`: Show filename in output [default: true]
-- `-e, --exclude <PATTERN>`: Exclude directories using glob patterns
-- `-v, --verify <SWHID>`: Reference identifier to compare with computed one
-- `-h, --help`: Print help information
-
-**Git Options (requires `--features git`):**
-- `--revision <REVISION>`: Git revision to compute SWHID for
-- `--release <RELEASE>`: Git release/tag to compute SWHID for
-- `--snapshot`: Compute Git snapshot SWHID
-
-### Symlink Handling and Specification Compliance
-
-**Important**: The official SWHID specification v1.2 states that symlinks are treated as content objects where the "content" is the symlink target string itself, and this reference implementation strictly obeys that rule.
-
-The CLI has a `--dereference` option, disabled by default, that comes handy if you want to compute the SWHID of the target of the symlink passed on the command line. This option only affects symlinks passed directly as arguments, not symlinks discovered during directory traversal, so the SWHID returned is the correct SWHID **for the symlink target**.
-
-
-
-### Library Usage
-
-```rust
-use swhid::{SwhidComputer, Swhid, ObjectType};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let computer = SwhidComputer::new();
-    
-    // Compute SWHID for a file
-    let file_swhid = computer.compute_file_swhid("/path/to/file.txt")?;
-    println!("File SWHID: {}", file_swhid);
-    
-    // Compute SWHID for a directory
-    let dir_swhid = computer.compute_directory_swhid("/path/to/directory")?;
-    println!("Directory SWHID: {}", dir_swhid);
-    
-    // Auto-detect and compute SWHID
-    let swhid = computer.compute_swhid("/path/to/object")?;
-    println!("SWHID: {}", swhid);
-    
-    Ok(())
-}
-```
-
-### Qualified SWHID Usage
-
-```rust
-use swhid::{Swhid, ObjectType, QualifiedSwhid};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a core SWHID
-    let hash = [0u8; 20];
-    let core_swhid = Swhid::new(ObjectType::Content, hash);
-    
-    // Create a qualified SWHID with qualifiers
-    let qualified = QualifiedSwhid::new(core_swhid)
-        .with_origin("https://github.com/user/repo".to_string())
-        .with_path(b"/src/main.rs".to_vec())
-        .with_lines(10, Some(20))
-        .with_bytes(5, Some(10));
-    
-    println!("Qualified SWHID: {}", qualified);
-    
-    // Parse a qualified SWHID from string
-    let parsed = QualifiedSwhid::from_string(
-        "swh:1:cnt:0000000000000000000000000000000000000000;origin=https://github.com/user/repo;path=/src/main.rs;lines=10-20;bytes=5-10"
-    )?;
-    
-    println!("Origin: {:?}", parsed.origin());
-    println!("Path: {:?}", parsed.path().map(|p| String::from_utf8_lossy(p)));
-    println!("Lines: {:?}", parsed.lines());
-    println!("Bytes: {:?}", parsed.bytes());
-    
-    Ok(())
-}
-```
-
-### Direct Object Usage
-
-```rust
-use swhid::{Content, Directory, Swhid, ObjectType};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create content from data
-    let content = Content::from_data(b"Hello, World!".to_vec());
-    let content_swhid = content.swhid();
-    println!("Content SWHID: {}", content_swhid);
-    
-    // Create directory from disk
-    let mut dir = Directory::from_disk("/path/to/directory", &[], true)?;
-    let dir_swhid = dir.swhid();
-    println!("Directory SWHID: {}", dir_swhid);
-    
-    // Create other SWHID types manually
-    let hash = [0u8; 20];
-    let revision_swhid = Swhid::new(ObjectType::Revision, hash);
-    let release_swhid = Swhid::new(ObjectType::Release, hash);
-    let snapshot_swhid = Swhid::new(ObjectType::Snapshot, hash);
-    
-    Ok(())
-}
-```
-
-## Architecture
-
-```
-src/
-├── lib.rs          # library exports
-├── swhid.rs        # Core SWHID types, QualifiedSWHID, and formatting
-├── hash.rs         # Basic hash computation
-├── content.rs      # Content object handling
-├── directory.rs    # Directory object handling
-├── error.rs        # error types
-├── computer.rs     # Minimal SWHIDComputer
-└── main.rs         # CLI interface
-
-Binaries:
-├── swhid-cli       # Command-line interface for SWHID computation
-
-Benchmarks:
-├── benches/        # Performance benchmarks using Criterion
-```
-
-## Performance Benchmarks
-
-This implementation includes comprehensive performance benchmarks using Criterion. The benchmarks measure:
-
-- **Content Creation**: Small (16B), medium (1KB), and large (100KB) content processing
-- **Hash Functions**: SHA1, Git-style SHA1, and Git object hashing
-- **SWHID Parsing**: Basic and qualified SWHID parsing performance
-- **SWHID Computation**: Content and file SWHID generation
-- **Directory Processing**: Multi-file directory structure processing
-- **Symlink Handling**: Default and dereferenced symlink processing
-- **Verification**: SWHID matching and mismatch verification
-
-### Running Benchmarks
-
-```bash
-# Run all benchmarks (takes several minutes)
-cargo bench
-
-# Run benchmarks with quick sampling (faster, less precise)
-cargo bench -- --quick
-
-# Run specific benchmark group
-cargo bench --bench benchmarks content_creation
-
-# Generate HTML reports (requires gnuplot)
-cargo bench -- --html
-```
-
-### Sample Benchmark Results
-
-Recent benchmark results show:
-- **Content creation**: 16B content in ~174ns, 1KB in ~2µs, 100KB in ~169µs
-- **Hash computation**: SHA1 hashing of 1KB data in ~1.9µs
-- **SWHID parsing**: Basic SWHID in ~149ns, qualified in ~354ns
-- **Directory processing**: 15 files in ~56µs
-- **Symlink handling**: Default in ~1.1µs, dereferenced in ~4.4µs
-
-## Testing
-
-Run the core conformance tests:
-
-```bash
-cargo test --test core_tests
-```
-
-Run all tests including SWHID module tests:
-
-```bash
-cargo test
-```
-
-## Dependencies
-
-- **sha1-checked**: Collision-resistant SHA1 hashing (SWHID requirement)
-- **hex**: Hexadecimal encoding/decoding
-
-## Use Cases
-
-- **Reference Implementation**: Clean code for SWHID specification
-- **Core Library**: Foundation for full-featured SWHID implementations
-- **Testing**: Base implementation for conformance testing
-- **Learning**: Simple, readable SWHID computation code
-- **Specification Compliance**: Exact implementation of SWHID v1.2
-
-
-## Specification Compliance
-
-This implementation follows the **official SWHID specification v1.2** exactly:
-
-- ✅ **Core Object Types**: All 5 types (cnt, dir, rev, rel, snp)
-- ✅ **Qualified SWHIDs**: Full qualifier support (origin, visit, anchor, path, lines, bytes)
-- ✅ **Format**: `swh:1:<object_type>:<40_character_hex_hash>[;qualifier=value]*`
-- ✅ **Hash Algorithm**: SHA1 (Git-compatible) with collision detection
-- ✅ **Namespace**: Always "swh"
-- ✅ **Version**: Always "1"
-- ✅ **Qualifier Validation**: Proper type checking for visit/anchor qualifiers
-- ✅ **Fragment Qualifiers**: Both lines and bytes qualifiers supported
-- ✅ **Symlink Handling**: Never follows symlinks by default (specification-compliant)
+## Notes on correctness & scope
+- `cnt` and `dir` algorithms follow Git object hashing.
+- On Unix, executable bit is respected; on non‑Unix, regular files default to 100644.
+- Special files (sockets, fifos, devices) are ignored.
+- Computing `rev`/`rel`/`snp` requires VCS metadata and is intentionally out of scope.
 
 ## License
-
-MIT License - see LICENSE file for details. 
+Dual‑licensed under **MIT** or **Apache‑2.0** at your option.
