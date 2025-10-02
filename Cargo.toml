@@ -11,6 +11,7 @@ categories = ["encoding", "data-structures", "parsing"]
 [features]
 default = []
 serde = ["dep:serde"]
+git = ["dep:git2"]
 
 [dependencies]
 hex = "0.4"
@@ -20,6 +21,7 @@ url = { version = "2", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 clap = { version = "4", features = ["derive"] }
 sha1collisiondetection = { version = "0.3" }
+git2 = { version = "0.20", optional = true }
 
 
 [target.'cfg(unix)'.dependencies]

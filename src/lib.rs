@@ -44,6 +44,7 @@ pub mod hash;
 pub mod content;
 pub mod directory;
 pub mod error;
+pub mod git;
 
 pub use crate::core::{ObjectType, Swhid};
 pub use crate::qualifier::{QualifiedSwhid, LineRange, ByteRange};

@@ -4,6 +4,12 @@ use std::path::PathBuf;
 use swhid::{Content, Directory, WalkOptions};
 use swhid::{Swhid, QualifiedSwhid};
 
+#[cfg(feature = "git")]
+use swhid::git;
+
+#[cfg(feature = "git")]
+use std::str::FromStr;
+
 /// Small CLI for the SWHID reference implementation
 #[derive(Parser, Debug)]
 #[command(name = "swhid")]
@@ -49,6 +55,43 @@ enum Command {
         /// Exclude files matching these suffixes (e.g., .tmp, .log)
         #[arg(long, value_name = "SUFFIX")]
         exclude: Vec<String>,
+    },
+    /// Git repository SWHID computation (requires --features git)
+    #[cfg(feature = "git")]
+    Git {
+        #[command(subcommand)]
+        cmd: GitCommand,
+    },
+}
+
+#[cfg(feature = "git")]
+#[derive(Subcommand, Debug)]
+enum GitCommand {
+    /// Compute revision SWHID for a commit
+    Revision {
+        /// Git repository path
+        repo: PathBuf,
+        /// Commit hash (if omitted, use HEAD)
+        commit: Option<String>,
+    },
+    /// Compute release SWHID for a tag
+    Release {
+        /// Git repository path
+        repo: PathBuf,
+        /// Tag name
+        tag: String,
+    },
+    /// Compute snapshot SWHID for a repository
+    Snapshot {
+        /// Git repository path
+        repo: PathBuf,
+        /// Commit hash (if omitted, use HEAD)
+        commit: Option<String>,
+    },
+    /// List all tags in a repository
+    Tags {
+        /// Git repository path
+        repo: PathBuf,
     },
 }
 
@@ -105,6 +148,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("  Expected: {}", expected);
                 println!("  Actual:   {}", actual);
                 std::process::exit(1);
+            }
+        }
+        #[cfg(feature = "git")]
+        Command::Git { cmd } => {
+            match cmd {
+                GitCommand::Revision { repo, commit } => {
+                    let repo = git::open_repo(&repo)?;
+                    let commit_oid = if let Some(commit_str) = commit {
+                        git2::Oid::from_str(&commit_str)
+                            .map_err(|e| format!("Invalid commit hash: {}", e))?
+                    } else {
+                        git::get_head_commit(&repo)?
+                    };
+                    let swhid = git::revision_swhid(&repo, &commit_oid)?;
+                    println!("{swhid}");
+                }
+                GitCommand::Release { repo, tag } => {
+                    let repo = git::open_repo(&repo)?;
+                    let tag_oid = repo.refname_to_id(&format!("refs/tags/{}", tag))
+                        .map_err(|e| format!("Tag not found: {}", e))?;
+                    let swhid = git::release_swhid(&repo, &tag_oid)?;
+                    println!("{swhid}");
+                }
+                GitCommand::Snapshot { repo, commit } => {
+                    let repo = git::open_repo(&repo)?;
+                    let commit_oid = if let Some(commit_str) = commit {
+                        git2::Oid::from_str(&commit_str)
+                            .map_err(|e| format!("Invalid commit hash: {}", e))?
+                    } else {
+                        git::get_head_commit(&repo)?
+                    };
+                    let swhid = git::snapshot_swhid(&repo, &commit_oid)?;
+                    println!("{swhid}");
+                }
+                GitCommand::Tags { repo } => {
+                    let repo = git::open_repo(&repo)?;
+                    let tags = git::get_tags(&repo)?;
+                    for tag_oid in tags {
+                        println!("{}", tag_oid);
+                    }
+                }
             }
         }
     }
