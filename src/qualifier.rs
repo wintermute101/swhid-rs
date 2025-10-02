@@ -129,6 +129,9 @@ impl FromStr for QualifiedSwhid {
             for item in qstr.split(';') {
                 if item.is_empty() { continue; }
                 let (k, v) = item.split_once('=').ok_or_else(|| SwhidError::InvalidFormat(item.into()))?;
+                if k.is_empty() {
+                    return Err(SwhidError::InvalidFormat(item.into()));
+                }
                 match k {
                     "origin" => q.origin = Some(v.to_owned()),
                     "visit"  => q.visit  = Some(v.parse()?),
@@ -169,5 +172,416 @@ mod tests {
 
         let parsed: QualifiedSwhid = s.parse().unwrap();
         assert_eq!(parsed.core(), &core);
+    }
+
+    #[test]
+    fn line_range_display() {
+        let single = LineRange { start: 10, end: None };
+        assert_eq!(single.to_string(), "10");
+        
+        let range = LineRange { start: 10, end: Some(20) };
+        assert_eq!(range.to_string(), "10-20");
+    }
+
+    #[test]
+    fn byte_range_display() {
+        let single = ByteRange { start: 100, end: None };
+        assert_eq!(single.to_string(), "100");
+        
+        let range = ByteRange { start: 100, end: Some(200) };
+        assert_eq!(range.to_string(), "100-200");
+    }
+
+    #[test]
+    fn line_range_equality() {
+        let range1 = LineRange { start: 10, end: Some(20) };
+        let range2 = LineRange { start: 10, end: Some(20) };
+        let range3 = LineRange { start: 10, end: None };
+        let range4 = LineRange { start: 11, end: Some(20) };
+        
+        assert_eq!(range1, range2);
+        assert_ne!(range1, range3);
+        assert_ne!(range1, range4);
+    }
+
+    #[test]
+    fn byte_range_equality() {
+        let range1 = ByteRange { start: 100, end: Some(200) };
+        let range2 = ByteRange { start: 100, end: Some(200) };
+        let range3 = ByteRange { start: 100, end: None };
+        let range4 = ByteRange { start: 101, end: Some(200) };
+        
+        assert_eq!(range1, range2);
+        assert_ne!(range1, range3);
+        assert_ne!(range1, range4);
+    }
+
+    #[test]
+    fn line_range_debug() {
+        let range = LineRange { start: 10, end: Some(20) };
+        let debug_str = format!("{:?}", range);
+        assert!(debug_str.contains("LineRange"));
+        assert!(debug_str.contains("10"));
+        assert!(debug_str.contains("20"));
+    }
+
+    #[test]
+    fn byte_range_debug() {
+        let range = ByteRange { start: 100, end: Some(200) };
+        let debug_str = format!("{:?}", range);
+        assert!(debug_str.contains("ByteRange"));
+        assert!(debug_str.contains("100"));
+        assert!(debug_str.contains("200"));
+    }
+
+    #[test]
+    fn line_range_clone() {
+        let range1 = LineRange { start: 10, end: Some(20) };
+        let range2 = range1.clone();
+        assert_eq!(range1, range2);
+    }
+
+    #[test]
+    fn byte_range_clone() {
+        let range1 = ByteRange { start: 100, end: Some(200) };
+        let range2 = range1.clone();
+        assert_eq!(range1, range2);
+    }
+
+    #[test]
+    fn known_key_as_str() {
+        assert_eq!(KnownKey::Origin.as_str(), "origin");
+        assert_eq!(KnownKey::Visit.as_str(), "visit");
+        assert_eq!(KnownKey::Anchor.as_str(), "anchor");
+        assert_eq!(KnownKey::Path.as_str(), "path");
+        assert_eq!(KnownKey::Lines.as_str(), "lines");
+        assert_eq!(KnownKey::Bytes.as_str(), "bytes");
+    }
+
+    #[test]
+    fn known_key_equality() {
+        assert_eq!(KnownKey::Origin, KnownKey::Origin);
+        assert_ne!(KnownKey::Origin, KnownKey::Visit);
+    }
+
+    #[test]
+    fn known_key_hash() {
+        use std::collections::HashMap;
+        let mut map = HashMap::new();
+        map.insert(KnownKey::Origin, "origin");
+        map.insert(KnownKey::Visit, "visit");
+        assert_eq!(map.get(&KnownKey::Origin), Some(&"origin"));
+        assert_eq!(map.get(&KnownKey::Visit), Some(&"visit"));
+    }
+
+    #[test]
+    fn known_key_debug() {
+        let debug_str = format!("{:?}", KnownKey::Origin);
+        assert!(debug_str.contains("Origin"));
+    }
+
+    #[test]
+    fn known_key_copy() {
+        let original = KnownKey::Origin;
+        let copied = original;
+        assert_eq!(original, copied);
+    }
+
+    #[test]
+    fn qualified_swhid_new() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core.clone());
+        assert_eq!(q.core(), &core);
+        assert!(q.origin.is_none());
+        assert!(q.visit.is_none());
+        assert!(q.anchor.is_none());
+        assert!(q.path.is_none());
+        assert!(q.lines.is_none());
+        assert!(q.bytes.is_none());
+        assert!(q.others.is_empty());
+    }
+
+    #[test]
+    fn qualified_swhid_with_origin() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core).with_origin("https://example.org/repo.git");
+        assert_eq!(q.origin, Some("https://example.org/repo.git".to_string()));
+    }
+
+    #[test]
+    fn qualified_swhid_with_visit() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let visit: Swhid = "swh:1:snp:123456789abcdef0112233445566778899aabbcc".parse().unwrap();
+        let q = QualifiedSwhid::new(core).with_visit(visit.clone());
+        assert_eq!(q.visit, Some(visit));
+    }
+
+    #[test]
+    fn qualified_swhid_with_anchor() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let anchor: Swhid = "swh:1:dir:123456789abcdef0112233445566778899aabbcc".parse().unwrap();
+        let q = QualifiedSwhid::new(core).with_anchor(anchor.clone());
+        assert_eq!(q.anchor, Some(anchor));
+    }
+
+    #[test]
+    fn qualified_swhid_with_path() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core).with_path("/src/lib.rs");
+        assert_eq!(q.path, Some("/src/lib.rs".to_string()));
+    }
+
+    #[test]
+    fn qualified_swhid_with_lines() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let lines = LineRange { start: 10, end: Some(20) };
+        let q = QualifiedSwhid::new(core).with_lines(lines.clone());
+        assert_eq!(q.lines, Some(lines));
+    }
+
+    #[test]
+    fn qualified_swhid_with_bytes() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let bytes = ByteRange { start: 100, end: Some(200) };
+        let q = QualifiedSwhid::new(core).with_bytes(bytes.clone());
+        assert_eq!(q.bytes, Some(bytes));
+    }
+
+    #[test]
+    fn qualified_swhid_push_unknown() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core).push_unknown("custom", "value");
+        assert_eq!(q.others.len(), 1);
+        assert_eq!(q.others[0], ("custom".to_string(), "value".to_string()));
+    }
+
+    #[test]
+    fn qualified_swhid_chaining() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core)
+            .with_origin("https://example.org/repo.git")
+            .with_path("/src/lib.rs")
+            .with_lines(LineRange { start: 10, end: Some(20) })
+            .push_unknown("custom", "value");
+        
+        assert_eq!(q.origin, Some("https://example.org/repo.git".to_string()));
+        assert_eq!(q.path, Some("/src/lib.rs".to_string()));
+        assert_eq!(q.lines, Some(LineRange { start: 10, end: Some(20) }));
+        assert_eq!(q.others.len(), 1);
+    }
+
+    #[test]
+    fn qualified_swhid_display() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core);
+        let s = q.to_string();
+        assert_eq!(s, "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684");
+    }
+
+    #[test]
+    fn qualified_swhid_display_with_qualifiers() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core)
+            .with_origin("https://example.org/repo.git")
+            .with_path("/src/lib.rs");
+        let s = q.to_string();
+        assert!(s.starts_with("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684"));
+        assert!(s.contains("origin=https://example.org/repo.git"));
+        assert!(s.contains("path=/src/lib.rs"));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_basic() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.core().to_string(), s);
+        assert!(q.origin.is_none());
+        assert!(q.visit.is_none());
+        assert!(q.anchor.is_none());
+        assert!(q.path.is_none());
+        assert!(q.lines.is_none());
+        assert!(q.bytes.is_none());
+        assert!(q.others.is_empty());
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_qualifiers() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;origin=https://example.org/repo.git;path=/src/lib.rs";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.origin, Some("https://example.org/repo.git".to_string()));
+        assert_eq!(q.path, Some("/src/lib.rs".to_string()));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_visit() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;visit=swh:1:snp:123456789abcdef0112233445566778899aabbcc";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.visit, Some("swh:1:snp:123456789abcdef0112233445566778899aabbcc".parse().unwrap()));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_anchor() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;anchor=swh:1:dir:123456789abcdef0112233445566778899aabbcc";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.anchor, Some("swh:1:dir:123456789abcdef0112233445566778899aabbcc".parse().unwrap()));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_lines() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;lines=10-20";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.lines, Some(LineRange { start: 10, end: Some(20) }));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_lines_single() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;lines=10";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.lines, Some(LineRange { start: 10, end: None }));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_bytes() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;bytes=100-200";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.bytes, Some(ByteRange { start: 100, end: Some(200) }));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_bytes_single() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;bytes=100";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.bytes, Some(ByteRange { start: 100, end: None }));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_unknown() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;custom=value";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.others.len(), 1);
+        assert_eq!(q.others[0], ("custom".to_string(), "value".to_string()));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_with_multiple_unknown() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;custom1=value1;custom2=value2";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.others.len(), 2);
+        assert!(q.others.contains(&("custom1".to_string(), "value1".to_string())));
+        assert!(q.others.contains(&("custom2".to_string(), "value2".to_string())));
+    }
+
+    #[test]
+    fn qualified_swhid_parse_empty_qualifiers() {
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;";
+        let q: QualifiedSwhid = s.parse().unwrap();
+        assert_eq!(q.core().to_string(), "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684");
+    }
+
+    #[test]
+    fn qualified_swhid_parse_invalid_format() {
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;invalid".parse::<QualifiedSwhid>().is_err());
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;=value".parse::<QualifiedSwhid>().is_err());
+    }
+
+    #[test]
+    fn qualified_swhid_parse_invalid_visit() {
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;visit=invalid".parse::<QualifiedSwhid>().is_err());
+    }
+
+    #[test]
+    fn qualified_swhid_parse_invalid_anchor() {
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;anchor=invalid".parse::<QualifiedSwhid>().is_err());
+    }
+
+    #[test]
+    fn qualified_swhid_parse_invalid_lines() {
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;lines=invalid".parse::<QualifiedSwhid>().is_err());
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;lines=20-10".parse::<QualifiedSwhid>().is_err());
+    }
+
+    #[test]
+    fn qualified_swhid_parse_invalid_bytes() {
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;bytes=invalid".parse::<QualifiedSwhid>().is_err());
+        assert!("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;bytes=200-100".parse::<QualifiedSwhid>().is_err());
+    }
+
+    #[test]
+    fn qualified_swhid_equality() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q1 = QualifiedSwhid::new(core.clone()).with_origin("https://example.org/repo.git");
+        let q2 = QualifiedSwhid::new(core.clone()).with_origin("https://example.org/repo.git");
+        let q3 = QualifiedSwhid::new(core).with_origin("https://example.org/other.git");
+        
+        assert_eq!(q1, q2);
+        assert_ne!(q1, q3);
+    }
+
+    #[test]
+    fn qualified_swhid_clone() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q1 = QualifiedSwhid::new(core).with_origin("https://example.org/repo.git");
+        let q2 = q1.clone();
+        assert_eq!(q1, q2);
+    }
+
+    #[test]
+    fn qualified_swhid_debug() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core).with_origin("https://example.org/repo.git");
+        let debug_str = format!("{:?}", q);
+        assert!(debug_str.contains("QualifiedSwhid"));
+    }
+
+    #[test]
+    fn qualified_swhid_roundtrip() {
+        let original = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;origin=https://example.org/repo.git;path=/src/lib.rs;lines=10-20";
+        let parsed: QualifiedSwhid = original.parse().unwrap();
+        let formatted = parsed.to_string();
+        assert_eq!(original, formatted);
+    }
+
+    #[test]
+    fn qualified_swhid_roundtrip_complex() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let visit: Swhid = "swh:1:snp:123456789abcdef0112233445566778899aabbcc".parse().unwrap();
+        let anchor: Swhid = "swh:1:dir:123456789abcdef0112233445566778899aabbcc".parse().unwrap();
+        
+        let q = QualifiedSwhid::new(core)
+            .with_origin("https://example.org/repo.git")
+            .with_visit(visit)
+            .with_anchor(anchor)
+            .with_path("/src/lib.rs")
+            .with_lines(LineRange { start: 10, end: Some(20) })
+            .with_bytes(ByteRange { start: 100, end: Some(200) })
+            .push_unknown("custom1", "value1")
+            .push_unknown("custom2", "value2");
+        
+        let formatted = q.to_string();
+        let parsed: QualifiedSwhid = formatted.parse().unwrap();
+        assert_eq!(q, parsed);
+    }
+
+    #[test]
+    fn parse_range_valid() {
+        assert_eq!(parse_range("10").unwrap(), (10, None));
+        assert_eq!(parse_range("10-20").unwrap(), (10, Some(20)));
+        assert_eq!(parse_range("0").unwrap(), (0, None));
+        assert_eq!(parse_range("0-0").unwrap(), (0, Some(0)));
+    }
+
+    #[test]
+    fn parse_range_invalid() {
+        assert!(parse_range("invalid").is_err());
+        assert!(parse_range("10-5").is_err()); // end < start
+        assert!(parse_range("-10").is_err());
+        assert!(parse_range("10-").is_err());
+    }
+
+    #[test]
+    fn parse_range_edge_cases() {
+        assert_eq!(parse_range("0").unwrap(), (0, None));
+        assert_eq!(parse_range("0-0").unwrap(), (0, Some(0)));
+        assert_eq!(parse_range("1-1").unwrap(), (1, Some(1)));
     }
 }

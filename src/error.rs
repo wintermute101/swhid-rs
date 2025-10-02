@@ -25,5 +25,5 @@ pub enum SwhidError {
     InvalidQualifierValue { key: String, value: String },
 
     #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
+    Io(String),
 }
