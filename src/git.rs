@@ -10,16 +10,16 @@ use crate::error::SwhidError;
 use std::path::Path;
 
 #[cfg(feature = "git")]
-use git2::{Repository, Object, ObjectType as GitObjectType};
+use git2::{Repository, ObjectType as GitObjectType};
 
 /// Compute a revision SWHID from a Git commit
 #[cfg(feature = "git")]
 pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo.find_commit(*commit_oid)
-        .map_err(|e| SwhidError::Io(format!("Failed to find commit: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to find commit: {e}")))?;
     
     let tree = commit.tree()
-        .map_err(|e| SwhidError::Io(format!("Failed to get commit tree: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to get commit tree: {e}")))?;
     
     let tree_oid = tree.id();
     
@@ -60,10 +60,10 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 #[cfg(feature = "git")]
 pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let tag = repo.find_tag(*tag_oid)
-        .map_err(|e| SwhidError::Io(format!("Failed to find tag: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to find tag: {e}")))?;
     
     let target = tag.target()
-        .map_err(|e| SwhidError::Io(format!("Failed to get tag target: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to get tag target: {e}")))?;
     let target_oid = target.id();
     
     // Create tag object content
@@ -101,10 +101,10 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
 #[cfg(feature = "git")]
 pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo.find_commit(*commit_oid)
-        .map_err(|e| SwhidError::Io(format!("Failed to find commit: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to find commit: {e}")))?;
     
     let _tree = commit.tree()
-        .map_err(|e| SwhidError::Io(format!("Failed to get commit tree: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to get commit tree: {e}")))?;
     
     // Create snapshot content
     let mut snapshot_content = Vec::new();
@@ -129,14 +129,14 @@ pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 #[cfg(feature = "git")]
 pub fn open_repo(path: &Path) -> Result<Repository, SwhidError> {
     Repository::open(path)
-        .map_err(|e| SwhidError::Io(format!("Failed to open repository: {}", e)))
+        .map_err(|e| SwhidError::Io(format!("Failed to open repository: {e}")))
 }
 
 /// Get the HEAD commit of a repository
 #[cfg(feature = "git")]
 pub fn get_head_commit(repo: &Repository) -> Result<git2::Oid, SwhidError> {
     let head = repo.head()
-        .map_err(|e| SwhidError::Io(format!("Failed to get HEAD: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to get HEAD: {e}")))?;
     
     head.target()
         .ok_or_else(|| SwhidError::Io("HEAD is not a direct reference".to_string()))
@@ -147,10 +147,10 @@ pub fn get_head_commit(repo: &Repository) -> Result<git2::Oid, SwhidError> {
 pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
     let mut tags = Vec::new();
     let tag_names = repo.tag_names(None)
-        .map_err(|e| SwhidError::Io(format!("Failed to get tag names: {}", e)))?;
+        .map_err(|e| SwhidError::Io(format!("Failed to get tag names: {e}")))?;
     
     for tag_name in tag_names.iter().flatten() {
-        if let Ok(tag_oid) = repo.refname_to_id(&format!("refs/tags/{}", tag_name)) {
+        if let Ok(tag_oid) = repo.refname_to_id(&format!("refs/tags/{tag_name}")) {
             tags.push(tag_oid);
         }
     }
@@ -212,7 +212,7 @@ mod tests {
         assert!(!is_git_repo(tmp.path()));
         
         // Create a simple git repo
-        let repo = git2::Repository::init(tmp.path()).unwrap();
+        let _repo = git2::Repository::init(tmp.path()).unwrap();
         assert!(is_git_repo(tmp.path()));
     }
     

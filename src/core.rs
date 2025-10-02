@@ -318,7 +318,7 @@ mod tests {
     fn swhid_debug() {
         let digest = [0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC];
         let swhid = Swhid::new(ObjectType::Content, digest);
-        let debug_str = format!("{:?}", swhid);
+        let debug_str = format!("{swhid:?}");
         assert!(debug_str.contains("Swhid"));
         assert!(debug_str.contains("Content"));
     }
@@ -337,7 +337,7 @@ mod tests {
         let digest = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391";
         
         for obj_type in &types {
-            let original = format!("swh:1:{}:{}", obj_type, digest);
+            let original = format!("swh:1:{obj_type}:{digest}");
             let parsed: Swhid = original.parse().unwrap();
             let formatted = parsed.to_string();
             assert_eq!(original, formatted);
@@ -354,7 +354,7 @@ mod tests {
         ];
         
         for digest in &digests {
-            let original = format!("swh:1:cnt:{}", digest);
+            let original = format!("swh:1:cnt:{digest}");
             let parsed: Swhid = original.parse().unwrap();
             let formatted = parsed.to_string();
             assert_eq!(original, formatted);

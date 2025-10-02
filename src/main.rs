@@ -7,9 +7,6 @@ use swhid::{Swhid, QualifiedSwhid};
 #[cfg(feature = "git")]
 use swhid::git;
 
-#[cfg(feature = "git")]
-use std::str::FromStr;
-
 /// Small CLI for the SWHID reference implementation
 #[derive(Parser, Debug)]
 #[command(name = "swhid")]
@@ -145,8 +142,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(0);
             } else {
                 println!("✗ Verification failed: {} does not match {}", path.display(), expected);
-                println!("  Expected: {}", expected);
-                println!("  Actual:   {}", actual);
+                println!("  Expected: {expected}");
+                println!("  Actual:   {actual}");
                 std::process::exit(1);
             }
         }
@@ -157,7 +154,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let repo = git::open_repo(&repo)?;
                     let commit_oid = if let Some(commit_str) = commit {
                         git2::Oid::from_str(&commit_str)
-                            .map_err(|e| format!("Invalid commit hash: {}", e))?
+                            .map_err(|e| format!("Invalid commit hash: {e}"))?
                     } else {
                         git::get_head_commit(&repo)?
                     };
@@ -166,8 +163,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 GitCommand::Release { repo, tag } => {
                     let repo = git::open_repo(&repo)?;
-                    let tag_oid = repo.refname_to_id(&format!("refs/tags/{}", tag))
-                        .map_err(|e| format!("Tag not found: {}", e))?;
+                    let tag_oid = repo.refname_to_id(&format!("refs/tags/{tag}"))
+                        .map_err(|e| format!("Tag not found: {e}"))?;
                     let swhid = git::release_swhid(&repo, &tag_oid)?;
                     println!("{swhid}");
                 }
@@ -175,7 +172,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let repo = git::open_repo(&repo)?;
                     let commit_oid = if let Some(commit_str) = commit {
                         git2::Oid::from_str(&commit_str)
-                            .map_err(|e| format!("Invalid commit hash: {}", e))?
+                            .map_err(|e| format!("Invalid commit hash: {e}"))?
                     } else {
                         git::get_head_commit(&repo)?
                     };
@@ -186,7 +183,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let repo = git::open_repo(&repo)?;
                     let tags = git::get_tags(&repo)?;
                     for tag_oid in tags {
-                        println!("{}", tag_oid);
+                        println!("{tag_oid}");
                     }
                 }
             }

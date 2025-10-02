@@ -423,7 +423,7 @@ mod tests {
     #[test]
     fn dir_walk_options_debug() {
         let opts = WalkOptions::default();
-        let debug_str = format!("{:?}", opts);
+        let debug_str = format!("{opts:?}");
         assert!(debug_str.contains("WalkOptions"));
     }
 
@@ -454,7 +454,7 @@ mod tests {
     fn dir_walk_options_debug_clone() {
         let opts = WalkOptions::default();
         let cloned = opts.clone();
-        let debug_str = format!("{:?}", cloned);
+        let debug_str = format!("{cloned:?}");
         assert!(debug_str.contains("WalkOptions"));
     }
 }

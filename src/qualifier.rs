@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn line_range_debug() {
         let range = LineRange { start: 10, end: Some(20) };
-        let debug_str = format!("{:?}", range);
+        let debug_str = format!("{range:?}");
         assert!(debug_str.contains("LineRange"));
         assert!(debug_str.contains("10"));
         assert!(debug_str.contains("20"));
@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn byte_range_debug() {
         let range = ByteRange { start: 100, end: Some(200) };
-        let debug_str = format!("{:?}", range);
+        let debug_str = format!("{range:?}");
         assert!(debug_str.contains("ByteRange"));
         assert!(debug_str.contains("100"));
         assert!(debug_str.contains("200"));
@@ -529,7 +529,7 @@ mod tests {
     fn qualified_swhid_debug() {
         let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
         let q = QualifiedSwhid::new(core).with_origin("https://example.org/repo.git");
-        let debug_str = format!("{:?}", q);
+        let debug_str = format!("{q:?}");
         assert!(debug_str.contains("QualifiedSwhid"));
     }
 
