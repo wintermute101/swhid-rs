@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-use swhid::{Content, Directory, WalkOptions};
+use swhid::{Content, DiskDirectoryBuilder, WalkOptions};
 use swhid::{Swhid, QualifiedSwhid};
 
 #[cfg(feature = "git")]
@@ -110,7 +110,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Command::Dir{ path, follow_symlinks, exclude } => {
             let mut opts = WalkOptions { follow_symlinks, ..Default::default() };
             opts.exclude_suffixes = exclude;
-            let s = Directory::new(&path).with_options(opts).swhid()?;
+            let s = DiskDirectoryBuilder::new(&path).with_options(opts).swhid()?;
             println!("{s}");
         }
         Command::Parse{ swhid } => {
@@ -131,7 +131,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else if path.is_dir() {
                 let mut opts = WalkOptions { follow_symlinks, ..Default::default() };
                 opts.exclude_suffixes = exclude;
-                Directory::new(&path).with_options(opts).swhid()?
+                DiskDirectoryBuilder::new(&path).with_options(opts).swhid()?
             } else {
                 eprintln!("Error: {} is neither a file nor a directory", path.display());
                 std::process::exit(1);
