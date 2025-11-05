@@ -262,14 +262,24 @@ mod tests {
 
     #[test]
     fn dir_file_order_independence() {
-        let tmp = assert_fs::TempDir::new().unwrap();
-        tmp.child("a.txt").write_str("A").unwrap();
-        tmp.child("b.txt").write_str("B").unwrap();
-        tmp.child("c.txt").write_str("C").unwrap();
-        
-        let dir = DiskDirectoryBuilder::new(tmp.path());
-        let id = dir.swhid().unwrap();
-        assert_eq!(id.object_type(), ObjectType::Directory);
+        let expected_swhid = "swh:1:dir:063012ee77491cc23b0bbad86cfd47e8309c80cb";
+        let dir = Directory::new(
+            vec![
+                Entry { name: b"c.txt".into(), mode: 0o100644, id: [0; 20] },
+                Entry { name: b"b.txt".into(), mode: 0o100644, id: [2; 20] },
+                Entry { name: b"a.txt".into(), mode: 0o100644, id: [1; 20] },
+            ]
+        );
+        assert_eq!(dir.swhid().unwrap().to_string(), expected_swhid);
+
+        let dir = Directory::new(
+            vec![
+                Entry { name: b"a.txt".into(), mode: 0o100644, id: [1; 20] },
+                Entry { name: b"b.txt".into(), mode: 0o100644, id: [2; 20] },
+                Entry { name: b"c.txt".into(), mode: 0o100644, id: [0; 20] },
+            ]
+        );
+        assert_eq!(dir.swhid().unwrap().to_string(), expected_swhid);
     }
 
     #[test]
