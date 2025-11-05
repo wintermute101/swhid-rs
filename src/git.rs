@@ -219,6 +219,7 @@ pub fn is_git_repo(_path: &Path) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ObjectType;
     use assert_fs::prelude::*;
     
     #[cfg(feature = "git")]
