@@ -75,7 +75,9 @@ features = ["serde", "git"]  # Enable serialization and Git support
 
 ### Basic SWHID v1.2 Operations
 
-```rust
+```rust,no_run
+use std::path::Path;
+
 use swhid::{Swhid, ObjectType, Content, Directory, QualifiedSwhid};
 
 // Parse a SWHID v1.2 identifier
@@ -92,33 +94,39 @@ println!("Content SWHID: {}", swhid);
 let dir = Directory::new(Path::new("/path/to/directory"));
 let swhid = dir.swhid()?;
 println!("Directory SWHID: {}", swhid);
+
+# Ok::<_, Box<dyn std::error::Error>>(())
 ```
 
 ### Qualified SWHID v1.2 Identifiers
 
-```rust
-use swhid::{Swhid, QualifiedSwhid};
+```rust,no_run
+use swhid::{ByteRange, LineRange, Swhid, QualifiedSwhid};
 
 let core: Swhid = "swh:1:cnt:...".parse()?;
 let qualified = QualifiedSwhid::new(core)
     .with_origin("https://github.com/user/repo")
     .with_path("/src/main.rs")
-    .with_lines(10, Some(20))
-    .with_bytes(100, Some(200));
+    .with_lines(LineRange { start: 10, end: Some(20) })
+    .with_bytes(ByteRange { start: 100, end: Some(200) });
 
 println!("Qualified SWHID: {}", qualified);
 // Output: swh:1:cnt:...;origin=https://github.com/user/repo;path=/src/main.rs;lines=10-20;bytes=100-200
+
+# Ok::<_, Box<dyn std::error::Error>>(())
 ```
 
 ### VCS Integration (Git Feature)
 
-```rust
+```rust,no_run
+use std::path::PathBuf;
+
 #[cfg(feature = "git")]
 use swhid::git;
 
 #[cfg(feature = "git")]
 {
-    let repo = git::open_repo("/path/to/git/repo")?;
+    let repo = git::open_repo(&PathBuf::from("/path/to/git/repo"))?;
     
     // Get HEAD commit SWHID v1.2
     let head_commit = git::get_head_commit(&repo)?;
@@ -131,6 +139,8 @@ use swhid::git;
     // Get snapshot SWHID v1.2
     let snapshot_swhid = git::snapshot_swhid(&repo, &head_commit)?;
 }
+
+# Ok::<_, Box<dyn std::error::Error>>(())
 ```
 
 ## Features
