@@ -91,6 +91,10 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
         _ => return Err(SwhidError::Io("Unknown target type".to_string())),
     }
     tag_content.push(b'\n');
+
+    tag_content.extend_from_slice(b"tag ");
+    tag_content.extend_from_slice(tag.name().unwrap_or("").replace('\n', "\n ").as_bytes());
+    tag_content.push(b'\n');
     
     if let Some(tagger) = tag.tagger() {
         tag_content.extend_from_slice(b"tagger ");
