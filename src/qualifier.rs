@@ -271,7 +271,7 @@ impl<'de> serde::Deserialize<'de> for QualifiedSwhid {
     fn deserialize<D: serde::Deserializer<'de>>(
         deserializer: D,
     ) -> std::result::Result<Self, D::Error> {
-        deserializer.deserialize_str(SwhidVisitor)
+        deserializer.deserialize_str(QualifiedSwhidVisitor)
     }
 }
 
