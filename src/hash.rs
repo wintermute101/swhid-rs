@@ -5,7 +5,7 @@ use sha1collisiondetection::{Digest, Sha1CD};
 /// This implements the object header format specified in SWHID v1.2,
 /// which is compatible with Git's object format for content and directory objects.
 pub fn swhid_object_header(typ: &str, len: usize) -> Vec<u8> {
-    let mut v = Vec::with_capacity(typ.len() + 1 + 20 + 1);
+    let mut v = Vec::with_capacity(typ.len() + 1 + 20 + 1 + len);
     v.extend_from_slice(typ.as_bytes());
     v.push(b' ');
     v.extend_from_slice(len.to_string().as_bytes());
@@ -18,11 +18,7 @@ pub fn swhid_object_header(typ: &str, len: usize) -> Vec<u8> {
 /// This computes the SHA-1 digest of content data using the SWHID v1.2
 /// object format, which is compatible with Git's blob format.
 pub fn hash_content(data: &[u8]) -> [u8; 20] {
-    let header = swhid_object_header("blob", data.len());
-    let mut hasher = Sha1CD::new();
-    hasher.update(&header);
-    hasher.update(data);
-    hasher.finalize().into()
+    hash_swhid_object("blob", data)
 }
 
 /// Hash arbitrary SWHID v1.2 object given its type and payload bytes.
@@ -35,22 +31,6 @@ pub fn hash_swhid_object(typ: &str, payload: &[u8]) -> [u8; 20] {
     hasher.update(&header);
     hasher.update(payload);
     hasher.finalize().into()
-}
-
-// Legacy function names for backward compatibility
-/// @deprecated Use `hash_content` instead. This function is kept for backward compatibility.
-pub fn hash_blob(data: &[u8]) -> [u8; 20] {
-    hash_content(data)
-}
-
-/// @deprecated Use `hash_swhid_object` instead. This function is kept for backward compatibility.
-pub fn hash_object(typ: &str, payload: &[u8]) -> [u8; 20] {
-    hash_swhid_object(typ, payload)
-}
-
-/// @deprecated Use `swhid_object_header` instead. This function is kept for backward compatibility.
-pub fn git_object_header(typ: &str, len: usize) -> Vec<u8> {
-    swhid_object_header(typ, len)
 }
 
 #[cfg(test)]

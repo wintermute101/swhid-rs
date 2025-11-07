@@ -4,6 +4,7 @@ pub mod content;
 pub mod core;
 pub mod directory;
 pub mod error;
+#[cfg(feature = "git")]
 pub mod git;
 pub mod hash;
 pub mod qualifier;

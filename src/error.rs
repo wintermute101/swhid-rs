@@ -25,5 +25,14 @@ pub enum SwhidError {
     InvalidQualifierValue { key: String, value: String },
 
     #[error("I/O error: {0}")]
-    Io(String),
+    Io(#[source] std::io::Error),
+}
+
+/// Errors that may occur while building a [`Directory`](crate::Directory)
+#[derive(Debug, Error)]
+pub enum DirectoryError {
+    #[error("Duplicate entry name: {}", String::from_utf8_lossy(.0))]
+    DuplicateEntryName(Box<[u8]>),
+    #[error("Invalid byte {byte} in name: {}", String::from_utf8_lossy(.name))]
+    InvalidByteInName { byte: u8, name: Box<[u8]> },
 }

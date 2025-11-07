@@ -13,14 +13,12 @@ use crate::error::SwhidError;
 use crate::Swhid;
 use std::path::Path;
 
-#[cfg(feature = "git")]
 use git2::{ObjectType as GitObjectType, Repository};
 
 /// Compute a SWHID v1.2 revision identifier from a Git commit
 ///
 /// This implements the SWHID v1.2 revision hashing algorithm for Git commits,
 /// creating a `swh:1:rev:<digest>` identifier according to the specification.
-#[cfg(feature = "git")]
 pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo
         .find_commit(*commit_oid)
@@ -69,7 +67,6 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 ///
 /// This implements the SWHID v1.2 release hashing algorithm for Git tags,
 /// creating a `swh:1:rel:<digest>` identifier according to the specification.
-#[cfg(feature = "git")]
 pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let tag = repo
         .find_tag(*tag_oid)
@@ -119,7 +116,6 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
 ///
 /// This implements the SWHID v1.2 snapshot hashing algorithm for Git repositories,
 /// creating a `swh:1:snp:<digest>` identifier according to the specification.
-#[cfg(feature = "git")]
 pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo
         .find_commit(*commit_oid)
@@ -154,13 +150,11 @@ pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 ///
 /// This function opens a Git repository to enable SWHID v1.2 computation
 /// for revision, release, and snapshot objects.
-#[cfg(feature = "git")]
 pub fn open_repo(path: &Path) -> Result<Repository, SwhidError> {
     Repository::open(path).map_err(|e| SwhidError::Io(format!("Failed to open repository: {e}")))
 }
 
 /// Get the HEAD commit of a Git repository for SWHID v1.2 computation
-#[cfg(feature = "git")]
 pub fn get_head_commit(repo: &Repository) -> Result<git2::Oid, SwhidError> {
     let head = repo
         .head()
@@ -171,7 +165,6 @@ pub fn get_head_commit(repo: &Repository) -> Result<git2::Oid, SwhidError> {
 }
 
 /// Get all tags in a Git repository for SWHID v1.2 release computation
-#[cfg(feature = "git")]
 pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
     let mut tags = Vec::new();
     let tag_names = repo
@@ -185,60 +178,6 @@ pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
     }
 
     Ok(tags)
-}
-
-/// Check if a path is a Git repository for SWHID v1.2 computation
-#[cfg(feature = "git")]
-pub fn is_git_repo(path: &Path) -> bool {
-    Repository::open(path).is_ok()
-}
-
-// Stub implementations when git feature is disabled
-#[cfg(not(feature = "git"))]
-pub fn revision_swhid(_repo: &(), _commit_oid: &()) -> Result<Swhid, SwhidError> {
-    Err(SwhidError::Io(
-        "Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string(),
-    ))
-}
-
-#[cfg(not(feature = "git"))]
-pub fn release_swhid(_repo: &(), _tag_oid: &()) -> Result<Swhid, SwhidError> {
-    Err(SwhidError::Io(
-        "Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string(),
-    ))
-}
-
-#[cfg(not(feature = "git"))]
-pub fn snapshot_swhid(_repo: &(), _commit_oid: &()) -> Result<Swhid, SwhidError> {
-    Err(SwhidError::Io(
-        "Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string(),
-    ))
-}
-
-#[cfg(not(feature = "git"))]
-pub fn open_repo(_path: &Path) -> Result<(), SwhidError> {
-    Err(SwhidError::Io(
-        "Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string(),
-    ))
-}
-
-#[cfg(not(feature = "git"))]
-pub fn get_head_commit(_repo: &()) -> Result<(), SwhidError> {
-    Err(SwhidError::Io(
-        "Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string(),
-    ))
-}
-
-#[cfg(not(feature = "git"))]
-pub fn get_tags(_repo: &()) -> Result<Vec<()>, SwhidError> {
-    Err(SwhidError::Io(
-        "Git feature not enabled - SWHID v1.2 VCS support requires 'git' feature".to_string(),
-    ))
-}
-
-#[cfg(not(feature = "git"))]
-pub fn is_git_repo(_path: &Path) -> bool {
-    false
 }
 
 #[cfg(test)]
