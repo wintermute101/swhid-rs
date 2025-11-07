@@ -1,6 +1,8 @@
 use std::fmt::{self, Display};
 use std::str::FromStr;
 
+use percent_encoding::{AsciiSet, utf8_percent_encode, percent_decode_str};
+
 use crate::core::Swhid;
 use crate::error::SwhidError;
 
@@ -66,7 +68,6 @@ impl KnownKey {
 
 /// A qualified SWHID with optional qualifiers.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct QualifiedSwhid {
     core: Swhid,
     origin: Option<String>,
@@ -97,6 +98,8 @@ impl QualifiedSwhid {
     }
 }
 
+const ESCAPED: &AsciiSet = &AsciiSet::EMPTY.add(b';');
+
 impl Display for QualifiedSwhid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.core)?;
@@ -104,15 +107,26 @@ impl Display for QualifiedSwhid {
         let mut write_kv = |k: &str, v: String, f: &mut fmt::Formatter<'_>| -> fmt::Result {
             write!(f, "{sep}{k}={v}")?; sep = ';'; Ok(())
         };
-        if let Some(o) = &self.origin { write_kv("origin", o.clone(), f)?; }
+        if let Some(o) = &self.origin {
+            write_kv("origin", utf8_percent_encode(o, ESCAPED).to_string(), f)?;
+        }
         if let Some(v) = &self.visit  { write_kv("visit", v.to_string(), f)?; }
         if let Some(a) = &self.anchor { write_kv("anchor", a.to_string(), f)?; }
-        if let Some(p) = &self.path   { write_kv("path", p.clone(), f)?; }
+        if let Some(p) = &self.path   {
+            write_kv("path", utf8_percent_encode(p, ESCAPED).to_string(), f)?;
+        }
         if let Some(l) = &self.lines  { write_kv("lines", l.to_string(), f)?; }
         if let Some(b) = &self.bytes  { write_kv("bytes", b.to_string(), f)?; }
         for (k, v) in &self.others { write_kv(k, v.clone(), f)?; }
         Ok(())
     }
+}
+
+fn parse_string_qualifier(key: &'static str, value: &str) -> Result<String, SwhidError> {
+    Ok(percent_decode_str(value)
+        .decode_utf8()
+        .map_err(|_| SwhidError::InvalidQualifierValue{ key: key.to_string(), value: value.to_owned()})?
+        .into_owned())
 }
 
 impl FromStr for QualifiedSwhid {
@@ -133,10 +147,10 @@ impl FromStr for QualifiedSwhid {
                     return Err(SwhidError::InvalidFormat(item.into()));
                 }
                 match k {
-                    "origin" => q.origin = Some(v.to_owned()),
+                    "origin" => q.origin = Some(parse_string_qualifier("origin", v)?),
                     "visit"  => q.visit  = Some(v.parse()?),
                     "anchor" => q.anchor = Some(v.parse()?),
-                    "path"   => q.path   = Some(v.to_owned()),
+                    "path"   => q.path   = Some(parse_string_qualifier("path", v)?),
                     "lines"  => {
                         let (s, e) = super::qualifier::parse_range(v)?;
                         q.lines = Some(LineRange{ start: s, end: e });
@@ -153,6 +167,44 @@ impl FromStr for QualifiedSwhid {
     }
 }
 
+#[cfg(feature="serde")]
+impl serde::Serialize for QualifiedSwhid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "serde")]
+struct QualifiedSwhidVisitor;
+
+#[cfg(feature = "serde")]
+impl serde::de::Visitor<'_> for QualifiedSwhidVisitor {
+    type Value = QualifiedSwhid;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a SWHID")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        value.parse().map_err(E::custom)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for QualifiedSwhid {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        deserializer.deserialize_str(SwhidVisitor)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -166,9 +218,7 @@ mod tests {
             .with_path("/src/lib.rs")
             .with_lines(LineRange{start: 9, end: Some(15)});
         let s = q.to_string();
-        assert!(s.contains("origin=https://example.org/repo.git"));
-        assert!(s.contains("path=/src/lib.rs"));
-        assert!(s.contains("lines=9-15"));
+        assert_eq!(s, "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;origin=https://example.org/repo.git;path=/src/lib.rs;lines=9-15");
 
         let parsed: QualifiedSwhid = s.parse().unwrap();
         assert_eq!(parsed.core(), &core);
@@ -309,6 +359,13 @@ mod tests {
     }
 
     #[test]
+    fn qualified_swhid_with_origin_no_escape() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core).with_origin("https://example.org/repo.git?foo=bar:baz qux");
+        assert_eq!(q.origin, Some("https://example.org/repo.git?foo=bar:baz qux".to_string()));
+    }
+
+    #[test]
     fn qualified_swhid_with_visit() {
         let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
         let visit: Swhid = "swh:1:snp:123456789abcdef0112233445566778899aabbcc".parse().unwrap();
@@ -385,9 +442,18 @@ mod tests {
             .with_origin("https://example.org/repo.git")
             .with_path("/src/lib.rs");
         let s = q.to_string();
-        assert!(s.starts_with("swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684"));
-        assert!(s.contains("origin=https://example.org/repo.git"));
-        assert!(s.contains("path=/src/lib.rs"));
+        assert_eq!(s, "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;origin=https://example.org/repo.git;path=/src/lib.rs");
+    }
+
+    #[test]
+    fn qualified_swhid_with_escaped_qualifiers() {
+        let core: Swhid = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684".parse().unwrap();
+        let q = QualifiedSwhid::new(core)
+            .with_origin("https://example.org/repo.git?foo=bar:baz qux;quux")
+            .with_path("/this;is\u{00A0}not?a=very:good file\0name");
+        let s = "swh:1:cnt:b45ef6fec89518d314f546fd6c3025367b721684;origin=https://example.org/repo.git?foo=bar:baz qux%3Bquux;path=/this%3Bis%C2%A0not?a=very:good file\0name";
+        assert_eq!(q.to_string(), s);
+        assert_eq!(s.parse::<QualifiedSwhid>().unwrap(), q);
     }
 
     #[test]

@@ -52,3 +52,7 @@ pub use crate::directory::{Directory, DiskDirectoryBuilder, WalkOptions};
 
 #[cfg(feature="serde")]
 pub use serde::{Serialize, Deserialize};
+
+mod readme_test {
+    #![doc = include_str!("../README.md")]
+}

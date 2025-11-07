@@ -1,8 +1,8 @@
 # swhid-rs — SWHID v1.2 Reference Implementation in Rust
 
-A **comprehensive**, **well-tested**, and **high-performance** implementation of the SWHID v1.2 specification as defined in **ISO/IEC 18670:2025**. This crate provides a complete reference implementation for parsing, generating, and working with SWHID v1.2 identifiers in Rust.
+A comprehensive implementation of the SWHID v1.2 specification as defined in **ISO/IEC 18670:2025**. This crate provides a complete reference implementation for parsing, generating, and working with SWHID v1.2 identifiers in Rust.
 
-> ℹ️ **SWHID v1.2 Compliant** — This implementation fully adheres to the SWHID v1.2 specification and ISO/IEC 18670:2025 standard.
+> ℹ️ **SWHID v1.2 Compliant** — This implementation fully adheres to the SWHID v1.2 specification and ISO/IEC 18670:2025 standard, with the exception of using collision-detecting SHA-1 instead of regular SHA1.
 
 ## Features
 
@@ -51,11 +51,8 @@ swhid verify --file README.md --expected 'swh:1:cnt:...'
 ```
 
 ### Performance & Quality
-- **151 comprehensive tests** — 100% test coverage of all functionality
 - **Performance benchmarks** — Criterion-based benchmarking suite
-- **Memory efficient** — Uses `Cow<[u8]>` for zero-copy operations where possible
 - **Error handling** — Comprehensive error types with detailed messages
-- **Documentation** — Extensive inline documentation and examples
 
 ## Installation
 
@@ -75,7 +72,9 @@ features = ["serde", "git"]  # Enable serialization and Git support
 
 ### Basic SWHID v1.2 Operations
 
-```rust
+```rust,no_run
+use std::path::Path;
+
 use swhid::{Swhid, ObjectType, Content, Directory, QualifiedSwhid};
 
 // Parse a SWHID v1.2 identifier
@@ -92,33 +91,39 @@ println!("Content SWHID: {}", swhid);
 let dir = Directory::new(Path::new("/path/to/directory"));
 let swhid = dir.swhid()?;
 println!("Directory SWHID: {}", swhid);
+
+# Ok::<_, Box<dyn std::error::Error>>(())
 ```
 
 ### Qualified SWHID v1.2 Identifiers
 
-```rust
-use swhid::{Swhid, QualifiedSwhid};
+```rust,no_run
+use swhid::{ByteRange, LineRange, Swhid, QualifiedSwhid};
 
 let core: Swhid = "swh:1:cnt:...".parse()?;
 let qualified = QualifiedSwhid::new(core)
     .with_origin("https://github.com/user/repo")
     .with_path("/src/main.rs")
-    .with_lines(10, Some(20))
-    .with_bytes(100, Some(200));
+    .with_lines(LineRange { start: 10, end: Some(20) })
+    .with_bytes(ByteRange { start: 100, end: Some(200) });
 
 println!("Qualified SWHID: {}", qualified);
 // Output: swh:1:cnt:...;origin=https://github.com/user/repo;path=/src/main.rs;lines=10-20;bytes=100-200
+
+# Ok::<_, Box<dyn std::error::Error>>(())
 ```
 
 ### VCS Integration (Git Feature)
 
-```rust
+```rust,no_run
+use std::path::PathBuf;
+
 #[cfg(feature = "git")]
 use swhid::git;
 
 #[cfg(feature = "git")]
 {
-    let repo = git::open_repo("/path/to/git/repo")?;
+    let repo = git::open_repo(&PathBuf::from("/path/to/git/repo"))?;
     
     // Get HEAD commit SWHID v1.2
     let head_commit = git::get_head_commit(&repo)?;
@@ -131,6 +136,8 @@ use swhid::git;
     // Get snapshot SWHID v1.2
     let snapshot_swhid = git::snapshot_swhid(&repo, &head_commit)?;
 }
+
+# Ok::<_, Box<dyn std::error::Error>>(())
 ```
 
 ## Features
@@ -156,7 +163,7 @@ cargo bench
 
 ## Testing
 
-The implementation includes 151 comprehensive tests covering:
+The implementation includes comprehensive tests covering:
 
 - **Content hashing** — Various data types, edge cases, unicode
 - **Directory processing** — Nested structures, symlinks, exclusions
@@ -173,11 +180,10 @@ cargo test --all-features  # Include Git tests
 
 ## Correctness & Scope
 
-- **SWHID v1.2 compliant** — Full adherence to the SWHID v1.2 specification and ISO/IEC 18670:2025
+- **SWHID v1.2 compliant** — Full adherence to the SWHID v1.2 specification and ISO/IEC 18670:2025, with the exception of using collision-detecting SHA-1 instead of regular SHA1
 - **VCS-compatible hashing** — Uses SWHID v1.2 algorithms compatible with Git for VCS objects
 - **Cross-platform** — Works on Unix and non-Unix systems
 - **Security-focused** — Uses collision-detecting SHA-1 for enhanced security
-- **Well-tested** — 151 tests with 100% coverage
 
 ### Platform Notes
 - **Unix systems** — Respects executable permissions for SWHID v1.2 compliance
