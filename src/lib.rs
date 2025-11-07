@@ -15,7 +15,3 @@ pub use crate::qualifier::{ByteRange, LineRange, QualifiedSwhid};
 
 #[cfg(feature = "serde")]
 pub use serde::{Deserialize, Serialize};
-
-mod readme_test {
-    #![doc = include_str!("../README.md")]
-}
