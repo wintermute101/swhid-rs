@@ -263,8 +263,7 @@ impl<'a> DiskDirectoryBuilder<'a> {
     /// This implements the SWHID v1.2 directory hashing algorithm, which
     /// is compatible with Git's tree format for directory objects.
     pub fn swhid(&self) -> Result<Swhid, crate::error::SwhidError> {
-        let entries =
-            read_dir(self.root, &self.opts).map_err(|e| crate::error::SwhidError::Io(e))?;
+        let entries = read_dir(self.root, &self.opts).map_err(crate::error::SwhidError::Io)?;
         Directory::new(entries)
             .map_err(|e| crate::error::SwhidError::Io(std::io::Error::other(e)))?
             .swhid()
