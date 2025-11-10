@@ -241,9 +241,17 @@ fn read_dir_with_exclude_patterns() {
     let mut opts = WalkOptions::default();
     opts.exclude_suffixes.push(".tmp".to_string());
 
-    let dir = DiskDirectoryBuilder::new(tmp.path()).with_options(opts);
-    let id = dir.swhid().unwrap();
-    assert_eq!(id.object_type(), ObjectType::Directory);
+    let dir = DiskDirectoryBuilder::new(tmp.path())
+        .with_options(opts)
+        .build()
+        .unwrap();
+
+    assert_eq!(
+        dir.entries(),
+        vec![
+            Entry::new(name("keep.txt"), 0o100644, hash_content(b"keep")),
+        ]
+    );
 }
 
 #[test]
