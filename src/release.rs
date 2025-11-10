@@ -58,8 +58,8 @@ pub fn rel_manifest(rev: &Release) -> Vec<u8> {
     writer.push(b"tag", name);
 
     match (author, author_timestamp, author_timestamp_offset) {
-        (Some(author), Some(author_timestamp), Some(author_timestamp_offset)) => 
-            writer.push_authorship(
+        (Some(author), Some(author_timestamp), Some(author_timestamp_offset)) => writer
+            .push_authorship(
                 b"author",
                 author,
                 *author_timestamp,

@@ -103,13 +103,16 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
         .map_err(|e| io_error(format!("Failed to get tag target: {e}")))?;
     let target_oid = target.id();
 
-    let (author, author_timestamp, author_timestamp_offset) = match tag
-        .tagger() {
-            Some(tagger) => {
-                let (author, author_timestamp, author_timestamp_offset) = parse_signature(tagger);
-                (Some(author), Some(author_timestamp), Some(author_timestamp_offset))
-            },
-            None => (None, None, None)
+    let (author, author_timestamp, author_timestamp_offset) = match tag.tagger() {
+        Some(tagger) => {
+            let (author, author_timestamp, author_timestamp_offset) = parse_signature(tagger);
+            (
+                Some(author),
+                Some(author_timestamp),
+                Some(author_timestamp_offset),
+            )
+        }
+        None => (None, None, None),
     };
 
     let release = Release {
@@ -199,4 +202,3 @@ pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
 
     Ok(tags)
 }
-

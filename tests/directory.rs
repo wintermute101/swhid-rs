@@ -248,9 +248,11 @@ fn read_dir_with_exclude_patterns() {
 
     assert_eq!(
         dir.entries(),
-        vec![
-            Entry::new(name("keep.txt"), 0o100644, hash_content(b"keep")),
-        ]
+        vec![Entry::new(
+            name("keep.txt"),
+            0o100644,
+            hash_content(b"keep")
+        ),]
     );
 }
 
