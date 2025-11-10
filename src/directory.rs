@@ -54,8 +54,8 @@ fn path_file_mode(meta: &fs::Metadata) -> u32 {
         let m = meta.permissions().mode();
         let exec = (m & 0o111) != 0;
         if meta.is_dir()       { 0o040000 }
-        else if meta.is_file() { return if exec { 0o100755 } else { 0o100644 }; }
-        else { return 0o100644; }
+        else if meta.is_file() { if exec { 0o100755 } else { 0o100644 }}
+        else { 0o100644}
     }
     #[cfg(not(unix))]
     {
