@@ -18,7 +18,7 @@ fn simple_dir_hash() {
     .unwrap();
 
     assert_eq!(
-        dir_payload(dir.entries().into()).unwrap(),
+        dir_manifest(dir.entries().into()).unwrap(),
         b"\
         100644 a.txt\0\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\
         100755 b.txt\0\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\
@@ -43,7 +43,7 @@ fn dir_order() {
     .unwrap();
 
     assert_eq!(
-        dir_payload(dir.entries().into()).unwrap(),
+        dir_manifest(dir.entries().into()).unwrap(),
         b"\
         100644 a.txt\0\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\
         100755 b.txt\0\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\
@@ -62,7 +62,7 @@ fn dir_order() {
 fn empty_dir_hash() {
     let dir = Directory::new(vec![]).unwrap();
 
-    assert_eq!(dir_payload(dir.entries().into()).unwrap(), b"");
+    assert_eq!(dir_manifest(dir.entries().into()).unwrap(), b"");
 
     // Checked against the implementation in https://archive.softwareheritage.org/swh:1:dir:60e683f48069373ee85227f2d7ab2eb1a8873ddb;origin=https://gitlab.softwareheritage.org/swh/devel/swh-model.git;visit=swh:1:snp:291aefbdccd43abac57629431201c2fd55284df7;anchor=swh:1:rev:9e54500902fc00ab1e6400431e2803b9bb41cc0a
     assert_eq!(
@@ -80,7 +80,7 @@ fn dir_with_symlinks() {
     .unwrap();
 
     assert_eq!(
-        dir_payload(dir.entries().into()).unwrap(),
+        dir_manifest(dir.entries().into()).unwrap(),
         b"\
         100644 a.txt\0\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\
         120000 b.txt\0\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\

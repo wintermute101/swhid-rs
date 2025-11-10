@@ -60,19 +60,19 @@ fn is_excluded(name: &[u8], opts: &WalkOptions) -> bool {
     opts.exclude_suffixes.iter().any(|suf| s.ends_with(suf))
 }
 
-/// Compute the SWHID v1.2 directory payload (concatenation of entries).
+/// Compute the SWHID v1.2 directory manifest (concatenation of entries).
 ///
 /// This implements the SWHID v1.2 directory tree format, which is compatible
 /// with Git's tree format for directory objects.
-pub fn dir_payload(mut children: Vec<Entry>) -> Result<Vec<u8>, DirectoryError> {
+pub fn dir_manifest(mut children: Vec<Entry>) -> Result<Vec<u8>, DirectoryError> {
     sort_and_check_children(&mut children)?;
 
-    Ok(dir_payload_unchecked(&children))
+    Ok(dir_manifest_unchecked(&children))
 }
 
-/// Same as [`dir_payload`] but assumes children are already sorted and validated with
+/// Same as [`dir_manifest`] but assumes children are already sorted and validated with
 /// [`sort_and_check_children`]
-fn dir_payload_unchecked(children: &[Entry]) -> Vec<u8> {
+fn dir_manifest_unchecked(children: &[Entry]) -> Vec<u8> {
     let mut out = Vec::new();
     for e in children {
         // "<mode> <name>\0<id-bytes>"
@@ -162,7 +162,7 @@ fn read_dir(path: &Path, opts: &WalkOptions) -> io::Result<Vec<Entry>> {
         if ft.is_dir() {
             let id = hash_swhid_object(
                 "tree",
-                &dir_payload(read_dir(&entry.path(), opts)?)
+                &dir_manifest(read_dir(&entry.path(), opts)?)
                     .map_err(|e: DirectoryError| io::Error::other(e))?,
             );
             children.push(Entry {
@@ -222,10 +222,10 @@ impl Directory {
     /// This implements the SWHID v1.2 directory hashing algorithm, which
     /// is compatible with Git's tree format for directory objects.
     pub fn swhid(&self) -> Result<Swhid, crate::error::SwhidError> {
-        let payload = dir_payload_unchecked(&self.entries);
+        let manifest = dir_manifest_unchecked(&self.entries);
         Ok(Swhid::new(
             ObjectType::Directory,
-            hash_swhid_object("tree", &payload),
+            hash_swhid_object("tree", &manifest),
         ))
     }
 }
