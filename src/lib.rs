@@ -8,6 +8,9 @@ pub mod error;
 pub mod git;
 pub mod hash;
 pub mod qualifier;
+pub mod release;
+pub mod revision;
+mod utils;
 
 pub use crate::content::Content;
 pub use crate::core::{ObjectType, Swhid};
@@ -16,3 +19,5 @@ pub use crate::qualifier::{ByteRange, LineRange, QualifiedSwhid};
 
 #[cfg(feature = "serde")]
 pub use serde::{Deserialize, Serialize};
+
+type Bytestring = Box<[u8]>;

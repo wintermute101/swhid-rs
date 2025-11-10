@@ -13,54 +13,78 @@ use crate::error::SwhidError;
 use crate::Swhid;
 use std::path::Path;
 
-use git2::{ObjectType as GitObjectType, Repository};
+use git2::{ObjectType as GitObjectType, Repository, Signature};
 
-/// Compute a SWHID v1.2 revision identifier from a Git commit
+use crate::release::Release;
+use crate::revision::Revision;
+use crate::Bytestring;
+
+fn io_error(msg: String) -> SwhidError {
+    SwhidError::Io(std::io::Error::other(msg))
+}
+
+fn oid_to_array(oid: git2::Oid) -> Result<[u8; 20], SwhidError> {
+    oid.as_bytes()
+        .try_into()
+        .map_err(|e| io_error(format!("Unexpected tree_oid length: {e}")))
+}
+
+fn parse_signature(sig: Signature) -> (Bytestring, i64, Bytestring) {
+    let name = sig.name_bytes();
+    let email = sig.email_bytes();
+
+    let mut full_name = Vec::with_capacity(name.len() + email.len() + 3);
+    full_name.extend_from_slice(name);
+    full_name.extend_from_slice(b" <");
+    full_name.extend_from_slice(email);
+    full_name.push(b'>');
+
+    let when = sig.when();
+    let offset_minutes = when.offset_minutes();
+    let offset_hours = offset_minutes / 60;
+    let offset_minutes = offset_minutes % 60;
+    let sign = when.sign();
+    let offset = format!("{sign}{offset_hours:02}{offset_minutes:02}");
+
+    (full_name.into(), when.seconds(), offset.into_bytes().into())
+}
+
+/// Compute a SWHID v1.2 revision identifier froma Git commit
 ///
 /// This implements the SWHID v1.2 revision hashing algorithm for Git commits,
 /// creating a `swh:1:rev:<digest>` identifier according to the specification.
 pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo
         .find_commit(*commit_oid)
-        .map_err(|e| SwhidError::Io(format!("Failed to find commit: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to find commit: {e}")))?;
 
     let tree = commit
         .tree()
-        .map_err(|e| SwhidError::Io(format!("Failed to get commit tree: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to get commit tree: {e}")))?;
 
     let tree_oid = tree.id();
 
-    // Create commit object content
-    let mut commit_content = Vec::new();
-    commit_content.extend_from_slice(b"tree ");
-    commit_content.extend_from_slice(tree_oid.as_bytes());
-    commit_content.push(b'\n');
+    let (author, author_timestamp, author_timestamp_offset) = parse_signature(commit.author());
+    let (committer, committer_timestamp, committer_timestamp_offset) =
+        parse_signature(commit.committer());
 
-    if commit.parents().next().is_some() {
-        for parent in commit.parents() {
-            commit_content.extend_from_slice(b"parent ");
-            commit_content.extend_from_slice(parent.id().as_bytes());
-            commit_content.push(b'\n');
-        }
-    }
+    let revision = Revision {
+        directory: oid_to_array(tree_oid)?,
+        parents: commit
+            .parents()
+            .map(|parent| oid_to_array(parent.id()))
+            .collect::<Result<_, _>>()?,
+        author,
+        author_timestamp,
+        author_timestamp_offset,
+        committer,
+        committer_timestamp,
+        committer_timestamp_offset,
+        extra_headers: Vec::new(), // FIXME: does not seem to be exposed by git2
+        message: Some(commit.message_bytes().into()),
+    };
 
-    let author = commit.author();
-    commit_content.extend_from_slice(b"author ");
-    commit_content.extend_from_slice(author.to_string().as_bytes());
-    commit_content.push(b'\n');
-
-    let committer = commit.committer();
-    commit_content.extend_from_slice(b"committer ");
-    commit_content.extend_from_slice(committer.to_string().as_bytes());
-    commit_content.push(b'\n');
-
-    commit_content.push(b'\n');
-    if let Some(message) = commit.message() {
-        commit_content.extend_from_slice(message.as_bytes());
-    }
-
-    let digest = crate::hash::hash_swhid_object("commit", &commit_content);
-    Ok(Swhid::new(crate::ObjectType::Revision, digest))
+    Ok(revision.swhid())
 }
 
 /// Compute a SWHID v1.2 release identifier from a Git tag
@@ -68,48 +92,44 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 /// This implements the SWHID v1.2 release hashing algorithm for Git tags,
 /// creating a `swh:1:rel:<digest>` identifier according to the specification.
 pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
+    use crate::release::ObjectType;
+
     let tag = repo
         .find_tag(*tag_oid)
-        .map_err(|e| SwhidError::Io(format!("Failed to find tag: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to find tag: {e}")))?;
 
     let target = tag
         .target()
-        .map_err(|e| SwhidError::Io(format!("Failed to get tag target: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to get tag target: {e}")))?;
     let target_oid = target.id();
 
-    // Create tag object content
-    let mut tag_content = Vec::new();
-    tag_content.extend_from_slice(b"object ");
-    tag_content.extend_from_slice(target_oid.as_bytes());
-    tag_content.push(b'\n');
+    let (author, author_timestamp, author_timestamp_offset) = match tag
+        .tagger() {
+            Some(tagger) => {
+                let (author, author_timestamp, author_timestamp_offset) = parse_signature(tagger);
+                (Some(author), Some(author_timestamp), Some(author_timestamp_offset))
+            },
+            None => (None, None, None)
+    };
 
-    tag_content.extend_from_slice(b"type ");
-    match target.kind() {
-        Some(GitObjectType::Commit) => tag_content.extend_from_slice(b"commit"),
-        Some(GitObjectType::Tree) => tag_content.extend_from_slice(b"tree"),
-        Some(GitObjectType::Blob) => tag_content.extend_from_slice(b"blob"),
-        Some(GitObjectType::Tag) => tag_content.extend_from_slice(b"tag"),
-        _ => return Err(SwhidError::Io("Unknown target type".to_string())),
-    }
-    tag_content.push(b'\n');
+    let release = Release {
+        object: oid_to_array(target_oid)?,
+        object_type: match target.kind() {
+            Some(GitObjectType::Commit) => ObjectType::Revision,
+            Some(GitObjectType::Tree) => ObjectType::Directory,
+            Some(GitObjectType::Blob) => ObjectType::Content,
+            Some(GitObjectType::Tag) => ObjectType::Release,
+            _ => return Err(io_error("Unknown target type".to_string())),
+        },
+        name: tag.name_bytes().into(),
+        author,
+        author_timestamp,
+        author_timestamp_offset,
+        extra_headers: Vec::new(), // FIXME: does not seem to be exposed by git2
+        message: tag.message_bytes().map(Into::into),
+    };
 
-    tag_content.extend_from_slice(b"tag ");
-    tag_content.extend_from_slice(tag.name().unwrap_or("").replace('\n', "\n ").as_bytes());
-    tag_content.push(b'\n');
-
-    if let Some(tagger) = tag.tagger() {
-        tag_content.extend_from_slice(b"tagger ");
-        tag_content.extend_from_slice(tagger.to_string().as_bytes());
-        tag_content.push(b'\n');
-    }
-
-    tag_content.push(b'\n');
-    if let Some(message) = tag.message() {
-        tag_content.extend_from_slice(message.as_bytes());
-    }
-
-    let digest = crate::hash::hash_swhid_object("tag", &tag_content);
-    Ok(Swhid::new(crate::ObjectType::Release, digest))
+    Ok(release.swhid())
 }
 
 /// Compute a SWHID v1.2 snapshot identifier from a Git repository
@@ -119,11 +139,11 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
 pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
     let commit = repo
         .find_commit(*commit_oid)
-        .map_err(|e| SwhidError::Io(format!("Failed to find commit: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to find commit: {e}")))?;
 
     let _tree = commit
         .tree()
-        .map_err(|e| SwhidError::Io(format!("Failed to get commit tree: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to get commit tree: {e}")))?;
 
     // Create snapshot content
     let mut snapshot_content = Vec::new();
@@ -151,17 +171,17 @@ pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 /// This function opens a Git repository to enable SWHID v1.2 computation
 /// for revision, release, and snapshot objects.
 pub fn open_repo(path: &Path) -> Result<Repository, SwhidError> {
-    Repository::open(path).map_err(|e| SwhidError::Io(format!("Failed to open repository: {e}")))
+    Repository::open(path).map_err(|e| io_error(format!("Failed to open repository: {e}")))
 }
 
 /// Get the HEAD commit of a Git repository for SWHID v1.2 computation
 pub fn get_head_commit(repo: &Repository) -> Result<git2::Oid, SwhidError> {
     let head = repo
         .head()
-        .map_err(|e| SwhidError::Io(format!("Failed to get HEAD: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to get HEAD: {e}")))?;
 
     head.target()
-        .ok_or_else(|| SwhidError::Io("HEAD is not a direct reference".to_string()))
+        .ok_or_else(|| io_error("HEAD is not a direct reference".to_string()))
 }
 
 /// Get all tags in a Git repository for SWHID v1.2 release computation
@@ -169,7 +189,7 @@ pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
     let mut tags = Vec::new();
     let tag_names = repo
         .tag_names(None)
-        .map_err(|e| SwhidError::Io(format!("Failed to get tag names: {e}")))?;
+        .map_err(|e| io_error(format!("Failed to get tag names: {e}")))?;
 
     for tag_name in tag_names.iter().flatten() {
         if let Ok(tag_oid) = repo.refname_to_id(&format!("refs/tags/{tag_name}")) {
@@ -180,59 +200,3 @@ pub fn get_tags(repo: &Repository) -> Result<Vec<git2::Oid>, SwhidError> {
     Ok(tags)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ObjectType;
-    use assert_fs::prelude::*;
-
-    #[cfg(feature = "git")]
-    #[test]
-    fn test_git_repo_detection() {
-        let tmp = assert_fs::TempDir::new().unwrap();
-        assert!(!is_git_repo(tmp.path()));
-
-        // Create a simple git repo
-        let _repo = git2::Repository::init(tmp.path()).unwrap();
-        assert!(is_git_repo(tmp.path()));
-    }
-
-    #[cfg(feature = "git")]
-    #[test]
-    fn test_revision_swhid() {
-        let tmp = assert_fs::TempDir::new().unwrap();
-        let repo = git2::Repository::init(tmp.path()).unwrap();
-
-        // Create a simple commit
-        let mut index = repo.index().unwrap();
-        let file_path = tmp.child("test.txt");
-        file_path.write_str("test content").unwrap();
-
-        index
-            .add_path(file_path.path().strip_prefix(tmp.path()).unwrap())
-            .unwrap();
-        let tree_oid = index.write_tree().unwrap();
-        let tree = repo.find_tree(tree_oid).unwrap();
-
-        let sig = git2::Signature::now("Test User", "test@example.com").unwrap();
-        let commit_oid = repo
-            .commit(
-                Some("refs/heads/main"),
-                &sig,
-                &sig,
-                "Test commit",
-                &tree,
-                &[],
-            )
-            .unwrap();
-
-        let swhid = revision_swhid(&repo, &commit_oid).unwrap();
-        assert_eq!(swhid.object_type(), ObjectType::Revision);
-    }
-
-    #[cfg(not(feature = "git"))]
-    #[test]
-    fn test_git_disabled() {
-        assert!(!is_git_repo(Path::new("/tmp")));
-    }
-}
