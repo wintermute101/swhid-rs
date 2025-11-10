@@ -48,7 +48,7 @@ pub mod git;
 pub use crate::core::{ObjectType, Swhid};
 pub use crate::qualifier::{QualifiedSwhid, LineRange, ByteRange};
 pub use crate::content::Content;
-pub use crate::directory::{Directory, WalkOptions};
+pub use crate::directory::{Directory, DiskDirectoryBuilder, WalkOptions};
 
 #[cfg(feature="serde")]
 pub use serde::{Serialize, Deserialize};

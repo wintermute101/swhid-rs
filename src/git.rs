@@ -129,7 +129,7 @@ pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
     snapshot_content.push(b'\n');
     
     // Add directory SWHID
-    let dir_swhid = crate::directory::Directory::new(repo.path().parent().unwrap_or(Path::new("."))).swhid()?;
+    let dir_swhid = crate::directory::DiskDirectoryBuilder::new(repo.path().parent().unwrap_or(Path::new("."))).swhid()?;
     snapshot_content.extend_from_slice(b"directory ");
     snapshot_content.extend_from_slice(dir_swhid.to_string().as_bytes());
     snapshot_content.push(b'\n');
