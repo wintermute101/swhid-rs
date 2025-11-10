@@ -2,26 +2,11 @@
 
 use std::path::Path;
 
-use git2::Repository;
 use assert_fs::prelude::*;
+use git2::Repository;
 
 use swhid::git::*;
 use swhid::ObjectType;
-
-/// Check if a path is a Git repository for SWHID v1.2 computation
-pub fn is_git_repo(path: &Path) -> bool {
-    Repository::open(path).is_ok()
-}
-
-#[test]
-fn test_git_repo_detection() {
-    let tmp = assert_fs::TempDir::new().unwrap();
-    assert!(!is_git_repo(tmp.path()));
-
-    // Create a simple git repo
-    let _repo = git2::Repository::init(tmp.path()).unwrap();
-    assert!(is_git_repo(tmp.path()));
-}
 
 #[test]
 fn test_revision_swhid() {
