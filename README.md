@@ -75,7 +75,7 @@ features = ["serde", "git"]  # Enable serialization and Git support
 ```rust,no_run
 use std::path::Path;
 
-use swhid::{Swhid, ObjectType, Content, Directory, QualifiedSwhid};
+use swhid::{Swhid, ObjectType, Content, DiskDirectoryBuilder, QualifiedSwhid};
 
 // Parse a SWHID v1.2 identifier
 let swhid: Swhid = "swh:1:cnt:e69de29bb2d1d6434b8b29ae775ad8c2e48c5391".parse()?;
@@ -88,7 +88,7 @@ let swhid = content.swhid();
 println!("Content SWHID: {}", swhid);
 
 // Create SWHID v1.2 directory identifier
-let dir = Directory::new(Path::new("/path/to/directory"));
+let dir = DiskDirectoryBuilder::new(Path::new("/path/to/directory"));
 let swhid = dir.swhid()?;
 println!("Directory SWHID: {}", swhid);
 
