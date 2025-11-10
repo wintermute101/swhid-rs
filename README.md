@@ -1,6 +1,6 @@
 # swhid-rs — SWHID v1.2 Reference Implementation in Rust
 
-A **comprehensive**, **well-tested**, and **high-performance** implementation of the SWHID v1.2 specification as defined in **ISO/IEC 18670:2025**. This crate provides a complete reference implementation for parsing, generating, and working with SWHID v1.2 identifiers in Rust.
+A comprehensive implementation of the SWHID v1.2 specification as defined in **ISO/IEC 18670:2025**. This crate provides a complete reference implementation for parsing, generating, and working with SWHID v1.2 identifiers in Rust.
 
 > ℹ️ **SWHID v1.2 Compliant** — This implementation fully adheres to the SWHID v1.2 specification and ISO/IEC 18670:2025 standard.
 
@@ -51,11 +51,8 @@ swhid verify --file README.md --expected 'swh:1:cnt:...'
 ```
 
 ### Performance & Quality
-- **151 comprehensive tests** — 100% test coverage of all functionality
 - **Performance benchmarks** — Criterion-based benchmarking suite
-- **Memory efficient** — Uses `Cow<[u8]>` for zero-copy operations where possible
 - **Error handling** — Comprehensive error types with detailed messages
-- **Documentation** — Extensive inline documentation and examples
 
 ## Installation
 
@@ -166,7 +163,7 @@ cargo bench
 
 ## Testing
 
-The implementation includes 151 comprehensive tests covering:
+The implementation includes comprehensive tests covering:
 
 - **Content hashing** — Various data types, edge cases, unicode
 - **Directory processing** — Nested structures, symlinks, exclusions
@@ -187,7 +184,6 @@ cargo test --all-features  # Include Git tests
 - **VCS-compatible hashing** — Uses SWHID v1.2 algorithms compatible with Git for VCS objects
 - **Cross-platform** — Works on Unix and non-Unix systems
 - **Security-focused** — Uses collision-detecting SHA-1 for enhanced security
-- **Well-tested** — 151 tests with 100% coverage
 
 ### Platform Notes
 - **Unix systems** — Respects executable permissions for SWHID v1.2 compliance
