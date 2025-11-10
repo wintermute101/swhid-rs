@@ -66,7 +66,6 @@ impl KnownKey {
 
 /// A qualified SWHID with optional qualifiers.
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct QualifiedSwhid {
     core: Swhid,
     origin: Option<String>,
@@ -150,6 +149,44 @@ impl FromStr for QualifiedSwhid {
             }
         }
         Ok(q)
+    }
+}
+
+#[cfg(feature="serde")]
+impl serde::Serialize for QualifiedSwhid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "serde")]
+struct QualifiedSwhidVisitor;
+
+#[cfg(feature = "serde")]
+impl serde::de::Visitor<'_> for QualifiedSwhidVisitor {
+    type Value = QualifiedSwhid;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a SWHID")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        value.parse().map_err(E::custom)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for QualifiedSwhid {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        deserializer.deserialize_str(SwhidVisitor)
     }
 }
 

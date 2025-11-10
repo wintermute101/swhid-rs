@@ -43,7 +43,6 @@ impl ObjectType {
 
 /// A core SWHID: `swh:1:<tag>:<hex-digest>`
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature="serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Swhid {
     object_type: ObjectType,
     /// Lowercase hex sha1 digest (20 bytes -> 40 hex chars)
@@ -63,6 +62,7 @@ impl Swhid {
         hex::encode(self.digest)
     }
 }
+
 
 impl Display for Swhid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -98,6 +98,44 @@ impl FromStr for Swhid {
         let mut raw = [0u8; 20];
         hex::decode_to_slice(digest_hex, &mut raw).map_err(|_| SwhidError::InvalidDigest(digest_hex.to_owned()))?;
         Ok(Swhid::new(object_type, raw))
+    }
+}
+
+#[cfg(feature="serde")]
+impl serde::Serialize for Swhid {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self))
+    }
+}
+
+#[cfg(feature = "serde")]
+struct SwhidVisitor;
+
+#[cfg(feature = "serde")]
+impl serde::de::Visitor<'_> for SwhidVisitor {
+    type Value = Swhid;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a SWHID")
+    }
+
+    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        value.parse().map_err(E::custom)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Swhid {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        deserializer.deserialize_str(SwhidVisitor)
     }
 }
 
