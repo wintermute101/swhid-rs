@@ -76,7 +76,7 @@ fn dir_manifest_unchecked(children: &[Entry]) -> Vec<u8> {
     let mut out = Vec::new();
     for e in children {
         // "<mode> <name>\0<id-bytes>"
-        let mut mode = format!("{:06o}", e.mode).into_bytes();
+        let mut mode = format!("{:o}", e.mode).into_bytes();
         out.append(&mut mode);
         out.push(b' ');
         out.extend_from_slice(&e.name);

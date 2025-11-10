@@ -95,6 +95,30 @@ fn dir_with_symlinks() {
 }
 
 #[test]
+fn dir_with_subdir() {
+    let dir = Directory::new(vec![
+        Entry::new(name("a.txt"), 0o100644, [1; 20]),
+        Entry::new(name("b"), 0o040000, [2; 20]),
+    ])
+    .unwrap();
+
+    // Checked against the implementation in https://archive.softwareheritage.org/swh:1:dir:60e683f48069373ee85227f2d7ab2eb1a8873ddb;origin=https://gitlab.softwareheritage.org/swh/devel/swh-model.git;visit=swh:1:snp:291aefbdccd43abac57629431201c2fd55284df7;anchor=swh:1:rev:9e54500902fc00ab1e6400431e2803b9bb41cc0a
+    assert_eq!(
+        dir_manifest(dir.entries().into()).unwrap(),
+        b"\
+        100644 a.txt\x00\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\
+        40000 b\x00\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\
+        "
+    );
+
+    // ditto
+    assert_eq!(
+        dir.swhid().unwrap().to_string(),
+        "swh:1:dir:c890b32febf94c3163b67778ae8b26bb631610a3",
+    );
+}
+
+#[test]
 fn read_empty_dir() {
     let tmp = assert_fs::TempDir::new().unwrap();
     let dir = DiskDirectoryBuilder::new(tmp.path()).build().unwrap();
