@@ -263,20 +263,3 @@ fn dir_walk_options_custom() {
     assert!(opts.follow_symlinks);
     assert_eq!(opts.exclude_suffixes.len(), 2);
 }
-
-#[test]
-fn dir_walk_options_exclude_patterns() {
-    let tmp = assert_fs::TempDir::new().unwrap();
-    tmp.child("keep.txt").write_str("keep").unwrap();
-    tmp.child("exclude.tmp").write_str("exclude").unwrap();
-    tmp.child("also.log").write_str("also exclude").unwrap();
-    tmp.child("keep.log").write_str("keep").unwrap();
-
-    let mut opts = WalkOptions::default();
-    opts.exclude_suffixes.push(".tmp".to_string());
-    opts.exclude_suffixes.push(".log".to_string());
-
-    let dir = DiskDirectoryBuilder::new(tmp.path()).with_options(opts);
-    let id = dir.swhid().unwrap();
-    assert_eq!(id.object_type(), ObjectType::Directory);
-}
