@@ -45,7 +45,7 @@ pub fn rel_manifest(rev: &Release) -> Vec<u8> {
     } = rev;
     let mut writer = HeaderWriter::default();
 
-    writer.push(b"object", object);
+    writer.push(b"object", hex::encode(object));
     writer.push(
         b"type",
         match object_type {

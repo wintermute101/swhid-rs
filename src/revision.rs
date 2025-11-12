@@ -41,10 +41,10 @@ pub fn rev_manifest(rev: &Revision) -> Vec<u8> {
         message,
     } = rev;
     let mut writer = HeaderWriter::default();
-    writer.push(b"tree", directory);
+    writer.push(b"tree", hex::encode(directory));
 
     for parent in parents {
-        writer.push(b"parent", parent);
+        writer.push(b"parent", hex::encode(parent));
     }
 
     writer.push_authorship(
