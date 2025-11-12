@@ -39,3 +39,20 @@ impl HeaderWriter {
         self.0
     }
 }
+
+/// Returns `Err(item)` if the `item` is present twice in a row.
+pub(crate) fn check_unique<T: AsRef<[u8]>>(items: impl IntoIterator<Item = T>) -> Result<(), T> {
+    let mut items = items.into_iter();
+
+    if let Some(first_item) = items.next() {
+        let mut previous_item = first_item;
+        for item in items {
+            if item.as_ref() == previous_item.as_ref() {
+                return Err(item);
+            }
+            previous_item = item;
+        }
+    }
+
+    Ok(())
+}

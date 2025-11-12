@@ -17,6 +17,7 @@ use git2::{ObjectType as GitObjectType, Repository, Signature};
 
 use crate::release::Release;
 use crate::revision::Revision;
+use crate::snapshot::{Branch, BranchTarget, Snapshot};
 use crate::Bytestring;
 
 fn io_error(msg: String) -> SwhidError {
@@ -139,34 +140,96 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
 ///
 /// This implements the SWHID v1.2 snapshot hashing algorithm for Git repositories,
 /// creating a `swh:1:snp:<digest>` identifier according to the specification.
-pub fn snapshot_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
-    let commit = repo
-        .find_commit(*commit_oid)
-        .map_err(|e| io_error(format!("Failed to find commit: {e}")))?;
+pub fn snapshot_swhid(repo: &Repository) -> Result<Swhid, SwhidError> {
+    let references = repo
+        .references()
+        .map_err(|e| io_error(format!("Failed to list references: {e}")))?;
 
-    let _tree = commit
-        .tree()
-        .map_err(|e| io_error(format!("Failed to get commit tree: {e}")))?;
+    let branches: Vec<_> = references
+        .flat_map(|reference| {
+            match reference{
+                Ok(reference) => reference_to_branch(reference).transpose(),
+                Err(e) => Some(Err(io_error(format!("Failed to read reference: {e}")))),
+            }
+        })
+        .collect::<Result<_, _>>()?;
 
-    // Create snapshot content
-    let mut snapshot_content = Vec::new();
+    Snapshot::new(branches)
+        .map_err(|e| io_error(format!("Invalid snapshot: {e}")))?
+        .swhid()
+}
 
-    // Add revision SWHID
-    let revision = revision_swhid(repo, commit_oid)?;
-    snapshot_content.extend_from_slice(b"revision ");
-    snapshot_content.extend_from_slice(revision.to_string().as_bytes());
-    snapshot_content.push(b'\n');
+fn reference_to_branch(reference: git2::Reference<'_>) -> Result<Option<Branch>, SwhidError> {
+    if !reference.is_branch() && !reference.is_tag() {
+        return Ok(None);
+    }
 
-    // Add directory SWHID
-    let dir_swhid =
-        crate::directory::DiskDirectoryBuilder::new(repo.path().parent().unwrap_or(Path::new(".")))
-            .swhid()?;
-    snapshot_content.extend_from_slice(b"directory ");
-    snapshot_content.extend_from_slice(dir_swhid.to_string().as_bytes());
-    snapshot_content.push(b'\n');
-
-    let digest = crate::hash::hash_swhid_object("snapshot", &snapshot_content);
-    Ok(Swhid::new(crate::ObjectType::Snapshot, digest))
+    let name = reference.name_bytes().to_owned().into_boxed_slice();
+    let target = match reference.kind() {
+        None => {
+            // Dangling reference.
+            //
+            // FIXME: We need to define a type (because of
+            // https://github.com/swhid/specification/issues/64), so let's assume it's
+            // a commit.
+            if reference.target().is_some() {
+                return Err(io_error(format!(
+                    "Reference {} has None kind, but has a target",
+                    String::from_utf8_lossy(&name)
+                )));
+            }
+            if reference.symbolic_target_bytes().is_some() {
+                return Err(io_error(format!(
+                    "Reference {} has None kind, but has a symbolic target",
+                    String::from_utf8_lossy(&name)
+                )));
+            }
+            BranchTarget::Revision(None)
+        }
+        Some(git2::ReferenceType::Direct) => {
+            let Some(expected_target_id) = reference.target() else {
+                return Err(io_error(format!(
+                    "Reference {} has Direct kind, but has no target",
+                    String::from_utf8_lossy(&name)
+                )));
+            };
+            let target = reference.peel(git2::ObjectType::Any).map_err(|e| {
+                io_error(format!(
+                    "Failed to peel reference to {expected_target_id}: {e}"
+                ))
+            })?;
+            let target_id = target.id();
+            if target_id != expected_target_id {
+                return Err(io_error(format!("Reference {} has target {expected_target_id} but .peel(Any) returns a different target: {target_id}", String::from_utf8_lossy(&name))));
+            }
+            let target_id = oid_to_array(target_id)?;
+            match target.kind() {
+                None => {
+                    // Dangling reference.
+                    //
+                    // FIXME: We need to define a type (because of
+                    // https://github.com/swhid/specification/issues/64), so let's assume it's
+                    // a commit.
+                    BranchTarget::Revision(Some(target_id))
+                }
+                Some(git2::ObjectType::Any) => panic!("git2 returned an object with type 'Any'"),
+                Some(git2::ObjectType::Commit) => BranchTarget::Revision(Some(target_id)),
+                Some(git2::ObjectType::Tree) => BranchTarget::Directory(Some(target_id)),
+                Some(git2::ObjectType::Blob) => BranchTarget::Content(Some(target_id)),
+                Some(git2::ObjectType::Tag) => BranchTarget::Release(Some(target_id)),
+            }
+        }
+        Some(git2::ReferenceType::Symbolic) => {
+            let Some(target) = reference.symbolic_target_bytes() else {
+                return Err(io_error(format!(
+                    "Reference {} has Symbolic kind, but has no symbolic target",
+                    String::from_utf8_lossy(&name)
+                )));
+            };
+            BranchTarget::Alias(Some(target.into()))
+        }
+    };
+    Ok(Some(Branch { name, target }))
 }
 
 /// Open a Git repository for SWHID v1.2 computation

@@ -10,6 +10,7 @@ pub mod hash;
 pub mod qualifier;
 pub mod release;
 pub mod revision;
+pub mod snapshot;
 mod utils;
 
 pub use crate::content::Content;

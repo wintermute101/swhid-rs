@@ -8,6 +8,7 @@ use std::path::Path;
 use crate::core::{ObjectType, Swhid};
 use crate::error::DirectoryError;
 use crate::hash::{hash_content, hash_swhid_object};
+use crate::utils::check_unique;
 
 const DIRECTORY_MODE: u32 = 0o040000;
 const FILE_MODE: u32 = 0o100644;
@@ -22,7 +23,7 @@ pub struct WalkOptions {
     pub exclude_suffixes: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Entry {
     /// raw bytes (no encoding assumptions)
     name: Box<[u8]>,
@@ -89,14 +90,10 @@ fn dir_manifest_unchecked(children: &[Entry]) -> Vec<u8> {
 fn sort_and_check_children(children: &mut [Entry]) -> Result<(), DirectoryError> {
     children.sort_unstable_by(|a, b| a.name_for_sort().cmp(&b.name_for_sort()));
 
-    let mut previous_entry_name: Option<&[u8]> = None;
+    check_unique(children.iter().map(|child| &child.name))
+        .map_err(|name| DirectoryError::DuplicateEntryName(name.clone()))?;
+
     for entry in children {
-        if let Some(previous_entry_name) = previous_entry_name {
-            if *entry.name == *previous_entry_name {
-                return Err(DirectoryError::DuplicateEntryName(entry.name.clone()));
-            }
-        }
-        previous_entry_name = Some(&entry.name);
         for byte in [b'\0', b'/'] {
             if entry.name.contains(&byte) {
                 return Err(DirectoryError::InvalidByteInName {
@@ -201,8 +198,9 @@ fn read_dir(path: &Path, opts: &WalkOptions) -> io::Result<Vec<Entry>> {
 ///
 /// This struct represents a directory tree and provides methods to compute
 /// SWHID v1.2 compliant directory identifiers according to the specification.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Directory {
+    /// sorted according to the SWHID v1.2 order (ie. `/` suffix to directory names)
     entries: Vec<Entry>,
 }
 

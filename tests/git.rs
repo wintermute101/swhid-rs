@@ -1,9 +1,6 @@
 #![cfg(feature = "git")]
 
-use std::path::Path;
-
 use assert_fs::prelude::*;
-use git2::Repository;
 
 use swhid::git::*;
 use swhid::ObjectType;
