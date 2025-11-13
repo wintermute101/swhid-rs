@@ -6,19 +6,21 @@ fn bs(s: &'static str) -> Box<[u8]> {
 
 #[test]
 fn simple_rel_hash() {
-    let tree_hash = hex::decode("0efb37b28c53c7e4fbd253bb04a4df14008f63fe").unwrap().try_into().unwrap();
+    let tree_hash = hex::decode("0efb37b28c53c7e4fbd253bb04a4df14008f63fe")
+        .unwrap()
+        .try_into()
+        .unwrap();
 
-    let rel =
-        Release {
-            object: tree_hash,
-            object_type: ObjectType::Directory,
-            name: bs("v1.0"),
-            author: Some(bs("Test User <test@example.com>")),
-            author_timestamp: Some(1763027354),
-            author_timestamp_offset: Some(bs("+0100")),
-            extra_headers: Vec::new(),
-            message: Some(bs("Test tag")),
-        };
+    let rel = Release {
+        object: tree_hash,
+        object_type: ObjectType::Directory,
+        name: bs("v1.0"),
+        author: Some(bs("Test User <test@example.com>")),
+        author_timestamp: Some(1763027354),
+        author_timestamp_offset: Some(bs("+0100")),
+        extra_headers: Vec::new(),
+        message: Some(bs("Test tag")),
+    };
 
     // Checked against the implementation in https://archive.softwareheritage.org/swh:1:dir:60e683f48069373ee85227f2d7ab2eb1a8873ddb;origin=https://gitlab.softwareheritage.org/swh/devel/swh-model.git;visit=swh:1:snp:291aefbdccd43abac57629431201c2fd55284df7;anchor=swh:1:rev:9e54500902fc00ab1e6400431e2803b9bb41cc0a
     // using this script:
