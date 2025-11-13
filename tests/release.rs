@@ -13,7 +13,7 @@ fn simple_rel_hash() {
 
     let rel = Release {
         object: tree_hash,
-        object_type: ObjectType::Directory,
+        object_type: ReleaseTargetType::Directory,
         name: bs("v1.0"),
         author: Some(bs("Test User <test@example.com>")),
         author_timestamp: Some(1763027354),

@@ -28,6 +28,7 @@ impl BranchTarget {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Item in a [`Snapshot`]
 pub struct Branch {
     pub name: Bytestring,
     pub target: BranchTarget,

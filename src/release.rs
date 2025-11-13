@@ -2,7 +2,7 @@ use crate::utils::HeaderWriter;
 use crate::{Bytestring, Swhid};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ObjectType {
+pub enum ReleaseTargetType {
     Revision,
     Directory,
     Release,
@@ -12,7 +12,7 @@ pub enum ObjectType {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Release {
     pub object: [u8; 20],
-    pub object_type: ObjectType,
+    pub object_type: ReleaseTargetType,
     pub name: Bytestring,
     pub author: Option<Bytestring>,
     pub author_timestamp: Option<i64>,
@@ -51,10 +51,10 @@ pub fn rel_manifest(rev: &Release) -> Vec<u8> {
     writer.push(
         b"type",
         match object_type {
-            ObjectType::Revision => b"commit".as_ref(),
-            ObjectType::Directory => b"tree".as_ref(),
-            ObjectType::Release => b"release".as_ref(),
-            ObjectType::Content => b"blob".as_ref(),
+            ReleaseTargetType::Revision => b"commit".as_ref(),
+            ReleaseTargetType::Directory => b"tree".as_ref(),
+            ReleaseTargetType::Release => b"release".as_ref(),
+            ReleaseTargetType::Content => b"blob".as_ref(),
         },
     );
     writer.push(b"tag", name);

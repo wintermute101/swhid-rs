@@ -104,7 +104,7 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
 
 #[doc(hidden)]
 pub fn release_from_git(repo: &Repository, tag_oid: &git2::Oid) -> Result<Release, SwhidError> {
-    use crate::release::ObjectType;
+    use crate::release::ReleaseTargetType;
 
     let tag = repo
         .find_tag(*tag_oid)
@@ -130,10 +130,10 @@ pub fn release_from_git(repo: &Repository, tag_oid: &git2::Oid) -> Result<Releas
     Ok(Release {
         object: oid_to_array(target_oid)?,
         object_type: match target.kind() {
-            Some(GitObjectType::Commit) => ObjectType::Revision,
-            Some(GitObjectType::Tree) => ObjectType::Directory,
-            Some(GitObjectType::Blob) => ObjectType::Content,
-            Some(GitObjectType::Tag) => ObjectType::Release,
+            Some(GitObjectType::Commit) => ReleaseTargetType::Revision,
+            Some(GitObjectType::Tree) => ReleaseTargetType::Directory,
+            Some(GitObjectType::Blob) => ReleaseTargetType::Content,
+            Some(GitObjectType::Tag) => ReleaseTargetType::Release,
             _ => return Err(io_error("Unknown target type".to_string())),
         },
         name: tag.name_bytes().into(),

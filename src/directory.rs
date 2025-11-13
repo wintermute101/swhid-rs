@@ -24,6 +24,7 @@ pub struct WalkOptions {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+/// Item in a [`Directory`]
 pub struct Entry {
     /// raw bytes (no encoding assumptions)
     name: Box<[u8]>,

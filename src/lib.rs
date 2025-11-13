@@ -13,10 +13,13 @@ pub mod revision;
 pub mod snapshot;
 mod utils;
 
-pub use crate::content::Content;
-pub use crate::core::{ObjectType, Swhid};
-pub use crate::directory::{Directory, DiskDirectoryBuilder, WalkOptions};
-pub use crate::qualifier::{ByteRange, LineRange, QualifiedSwhid};
+pub use content::Content;
+pub use core::{ObjectType, Swhid};
+pub use directory::{Directory, DiskDirectoryBuilder, Entry, WalkOptions};
+pub use qualifier::{ByteRange, LineRange, QualifiedSwhid};
+pub use release::{Release, ReleaseTargetType};
+pub use revision::Revision;
+pub use snapshot::{Branch, BranchTarget, Snapshot};
 
 #[cfg(feature = "serde")]
 pub use serde::{Deserialize, Serialize};

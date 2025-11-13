@@ -4,7 +4,7 @@ use assert_fs::prelude::*;
 use git2::{Repository, Signature, Time};
 
 use swhid::git::*;
-use swhid::release::{ObjectType, Release};
+use swhid::release::{Release, ReleaseTargetType};
 use swhid::revision::Revision;
 use swhid::snapshot::{Branch, BranchTarget, Snapshot};
 
@@ -125,7 +125,7 @@ fn test_release_swhid() {
         rev,
         Release {
             object: tree_hash,
-            object_type: ObjectType::Directory,
+            object_type: ReleaseTargetType::Directory,
             name: bs("v1.0"),
             author: Some(bs("Test User <test@example.com>")),
             author_timestamp: Some(1763027354),
