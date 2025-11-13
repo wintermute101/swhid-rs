@@ -59,7 +59,10 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 }
 
 #[doc(hidden)]
-pub fn revision_from_git(repo: &Repository, commit_oid: &git2::Oid) -> Result<Revision, SwhidError> {
+pub fn revision_from_git(
+    repo: &Repository,
+    commit_oid: &git2::Oid,
+) -> Result<Revision, SwhidError> {
     let commit = repo
         .find_commit(*commit_oid)
         .map_err(|e| io_error(format!("Failed to find commit: {e}")))?;
@@ -157,16 +160,13 @@ pub fn snapshot_from_git(repo: &Repository) -> Result<Snapshot, SwhidError> {
         .map_err(|e| io_error(format!("Failed to list references: {e}")))?;
 
     let branches: Vec<_> = references
-        .flat_map(|reference| {
-            match reference{
-                Ok(reference) => reference_to_branch(reference).transpose(),
-                Err(e) => Some(Err(io_error(format!("Failed to read reference: {e}")))),
-            }
+        .flat_map(|reference| match reference {
+            Ok(reference) => reference_to_branch(reference).transpose(),
+            Err(e) => Some(Err(io_error(format!("Failed to read reference: {e}")))),
         })
         .collect::<Result<_, _>>()?;
 
-    Snapshot::new(branches)
-        .map_err(|e| io_error(format!("Invalid snapshot: {e}")))
+    Snapshot::new(branches).map_err(|e| io_error(format!("Invalid snapshot: {e}")))
 }
 
 fn reference_to_branch(reference: git2::Reference<'_>) -> Result<Option<Branch>, SwhidError> {
