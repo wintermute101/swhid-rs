@@ -1,6 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::path::Path;
-use swhid::{ByteRange, Content, Directory, LineRange, QualifiedSwhid, Swhid, WalkOptions};
+use swhid::{
+    ByteRange, Content, DiskDirectoryBuilder, LineRange, QualifiedSwhid, Swhid, WalkOptions,
+};
 use tempfile::TempDir;
 
 fn bench_content_creation(c: &mut Criterion) {
@@ -82,7 +84,7 @@ fn bench_swhid_computation(c: &mut Criterion) {
     let test_file = temp_dir.path().join("test.txt");
     std::fs::write(&test_file, "test content").unwrap();
 
-    let dir = Directory::new(temp_dir.path());
+    let dir = DiskDirectoryBuilder::new(temp_dir.path());
     group.bench_function("directory_swhid", |b| b.iter(|| dir.swhid().unwrap()));
 
     group.finish();
@@ -107,13 +109,13 @@ fn bench_directory_processing(c: &mut Criterion) {
         std::fs::write(&file_path, format!("subcontent {}", i)).unwrap();
     }
 
-    let dir = Directory::new(temp_dir.path());
+    let dir = DiskDirectoryBuilder::new(temp_dir.path());
     group.bench_function("multi_file_structure", |b| b.iter(|| dir.swhid().unwrap()));
 
     // Test with exclude patterns
     let mut opts = WalkOptions::default();
     opts.exclude_suffixes.push(".txt".to_string());
-    let dir_with_excludes = Directory::new(temp_dir.path()).with_options(opts);
+    let dir_with_excludes = DiskDirectoryBuilder::new(temp_dir.path()).with_options(opts);
 
     group.bench_function("with_exclude_patterns", |b| {
         b.iter(|| dir_with_excludes.swhid().unwrap())
@@ -133,7 +135,7 @@ fn bench_symlink_handling(c: &mut Criterion) {
     std::os::unix::fs::symlink(&target_file, &symlink_file).unwrap();
 
     // Test default behavior (no follow symlinks)
-    let dir_default = Directory::new(temp_dir.path());
+    let dir_default = DiskDirectoryBuilder::new(temp_dir.path());
     group.bench_function("default_symlinks", |b| {
         b.iter(|| dir_default.swhid().unwrap())
     });
@@ -141,7 +143,7 @@ fn bench_symlink_handling(c: &mut Criterion) {
     // Test with follow symlinks
     let mut opts = WalkOptions::default();
     opts.follow_symlinks = true;
-    let dir_follow = Directory::new(temp_dir.path()).with_options(opts);
+    let dir_follow = DiskDirectoryBuilder::new(temp_dir.path()).with_options(opts);
 
     group.bench_function("follow_symlinks", |b| {
         b.iter(|| dir_follow.swhid().unwrap())
@@ -167,12 +169,12 @@ fn bench_verification(c: &mut Criterion) {
         })
     });
 
-    let dir = Directory::new(temp_dir.path());
+    let dir = DiskDirectoryBuilder::new(temp_dir.path());
     let expected_dir_swhid = dir.swhid().unwrap();
 
     group.bench_function("directory_verification", |b| {
         b.iter(|| {
-            let actual = Directory::new(temp_dir.path()).swhid().unwrap();
+            let actual = DiskDirectoryBuilder::new(temp_dir.path()).swhid().unwrap();
             black_box(actual == expected_dir_swhid)
         })
     });

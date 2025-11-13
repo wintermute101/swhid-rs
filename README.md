@@ -1,7 +1,6 @@
 # swhid-rs: SWHID v1.2 reference implementation
 
 This crate provides a minimal implementation of the SWHID (SoftWare Hash IDentifier) format as defined in **ISO/IEC 18670:2025** and detailed in the SWHID v1.2 specification;
-with the exception of using collision-detecting SHA-1 instead of regular SHA1.
 
 This implementation is **fully compliant** with SWHID v1.2 and provides:
 - Core identifier representation and parsing/printing (`swh:1:<tag>:<id>`)

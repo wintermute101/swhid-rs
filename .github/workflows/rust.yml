@@ -1,0 +1,22 @@
+name: Rust CI Pipeline
+
+on:
+  push:
+    branches:
+  pull_request:
+    branches:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check formatting
+        run: cargo fmt -- --check
+      - name: Run clippy
+        run: cargo clippy
+      - name: Run tests
+        run: RUST_BACKTRACE=full cargo test --verbose
