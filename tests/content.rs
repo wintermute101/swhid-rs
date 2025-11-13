@@ -1,5 +1,5 @@
-use swhid::{ObjectType, Swhid};
 use swhid::content::*;
+use swhid::{ObjectType, Swhid};
 
 #[test]
 fn content_from_bytes() {
