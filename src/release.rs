@@ -30,7 +30,7 @@ impl Release {
         let manifest = rel_manifest(self);
         let digest = crate::hash::hash_swhid_object("tag", &manifest);
 
-        Swhid::new(crate::ObjectType::Revision, digest)
+        Swhid::new(crate::ObjectType::Release, digest)
     }
 }
 
@@ -62,7 +62,7 @@ pub fn rel_manifest(rev: &Release) -> Vec<u8> {
     match (author, author_timestamp, author_timestamp_offset) {
         (Some(author), Some(author_timestamp), Some(author_timestamp_offset)) => writer
             .push_authorship(
-                b"author",
+                b"tagger",
                 author,
                 *author_timestamp,
                 author_timestamp_offset,
