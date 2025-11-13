@@ -1,27 +1,42 @@
 #![cfg(feature = "git")]
 
 use assert_fs::prelude::*;
+use git2::{Repository, Signature, Time};
 
 use swhid::git::*;
-use swhid::ObjectType;
+use swhid::revision::Revision;
+
+fn bs(s: &'static str) -> Box<[u8]> {
+    s.as_bytes().into()
+}
+
+fn oid_to_array(oid: git2::Oid) -> [u8; 20] {
+    oid.as_bytes()
+        .try_into()
+        .expect("Unexpected tree_oid length")
+}
 
 #[test]
 fn test_revision_swhid() {
     let tmp = assert_fs::TempDir::new().unwrap();
-    let repo = git2::Repository::init(tmp.path()).unwrap();
+    let repo = Repository::init(tmp.path()).unwrap();
 
-    // Create a simple commit
+    // Create content
     let mut index = repo.index().unwrap();
     let file_path = tmp.child("test.txt");
     file_path.write_str("test content").unwrap();
 
+    // Create directory
     index
         .add_path(file_path.path().strip_prefix(tmp.path()).unwrap())
         .unwrap();
     let tree_oid = index.write_tree().unwrap();
+    let tree_hash = hex::decode("0efb37b28c53c7e4fbd253bb04a4df14008f63fe").unwrap().try_into().unwrap();
+    assert_eq!(oid_to_array(tree_oid), tree_hash);
     let tree = repo.find_tree(tree_oid).unwrap();
 
-    let sig = git2::Signature::now("Test User", "test@example.com").unwrap();
+    // Create commit
+    let sig = Signature::new("Test User", "test@example.com", &Time::new(1763027354, 60)).unwrap();
     let commit_oid = repo
         .commit(
             Some("refs/heads/main"),
@@ -33,6 +48,32 @@ fn test_revision_swhid() {
         )
         .unwrap();
 
+    let rev = revision_from_git(&repo, &commit_oid).unwrap();
+    assert_eq!(
+        rev,
+        Revision {
+            directory: tree_hash,
+            parents: Vec::new(),
+            author: bs("Test User <test@example.com>"),
+            author_timestamp: 1763027354,
+            author_timestamp_offset: bs("+0100"),
+            committer: bs("Test User <test@example.com>"),
+            committer_timestamp: 1763027354,
+            committer_timestamp_offset: bs("+0100"),
+            extra_headers: Vec::new(),
+            message: Some(bs("Test commit")),
+        }
+    );
+
+    // Checked against the implementation in https://archive.softwareheritage.org/swh:1:dir:60e683f48069373ee85227f2d7ab2eb1a8873ddb;origin=https://gitlab.softwareheritage.org/swh/devel/swh-model.git;visit=swh:1:snp:291aefbdccd43abac57629431201c2fd55284df7;anchor=swh:1:rev:9e54500902fc00ab1e6400431e2803b9bb41cc0a
+    // using this script:
+    // >>> from swh.model.model import *
+    // >>> person = Person.from_fullname(b"Test User <test@example.com>")
+    // >>> ts = TimestampWithTimezone(timestamp=Timestamp(seconds=1763027354, microseconds=0), offset_bytes=b"+0100")
+    // >>> rev = Revision(directory=bytes.fromhex("0efb37b28c53c7e4fbd253bb04a4df14008f63fe"), message=b"Test commit", author=person, committer=person, date=ts, committer_date=ts, type=RevisionType.GIT, synthetic=False)
+    // >>> rev.swhid()
+    // CoreSWHID.from_string('swh:1:rev:07cde6575fb633ef9b5ecbe730e6eb97475a2fd9')
+
     let swhid = revision_swhid(&repo, &commit_oid).unwrap();
-    assert_eq!(swhid.object_type(), ObjectType::Revision);
+    assert_eq!(swhid.to_string(), "swh:1:rev:07cde6575fb633ef9b5ecbe730e6eb97475a2fd9");
 }

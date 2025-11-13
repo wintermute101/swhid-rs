@@ -1,6 +1,7 @@
 use crate::utils::HeaderWriter;
 use crate::{Bytestring, Swhid};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectType {
     Revision,
     Directory,
@@ -8,6 +9,7 @@ pub enum ObjectType {
     Content,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Release {
     pub object: [u8; 20],
     pub object_type: ObjectType,

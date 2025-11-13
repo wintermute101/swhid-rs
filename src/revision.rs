@@ -1,6 +1,7 @@
 use crate::utils::HeaderWriter;
 use crate::{Bytestring, Swhid};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Revision {
     pub directory: [u8; 20],
     pub parents: Vec<[u8; 20]>,
