@@ -50,11 +50,16 @@ fn parse_signature(sig: Signature) -> (Bytestring, i64, Bytestring) {
     (full_name.into(), when.seconds(), offset.into_bytes().into())
 }
 
-/// Compute a SWHID v1.2 revision identifier froma Git commit
+/// Compute a SWHID v1.2 revision identifier from a Git commit
 ///
 /// This implements the SWHID v1.2 revision hashing algorithm for Git commits,
 /// creating a `swh:1:rev:<digest>` identifier according to the specification.
 pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
+    revision_from_git(repo, commit_oid).map(|rev| rev.swhid())
+}
+
+#[doc(hidden)]
+pub fn revision_from_git(repo: &Repository, commit_oid: &git2::Oid) -> Result<Revision, SwhidError> {
     let commit = repo
         .find_commit(*commit_oid)
         .map_err(|e| io_error(format!("Failed to find commit: {e}")))?;
@@ -69,7 +74,7 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
     let (committer, committer_timestamp, committer_timestamp_offset) =
         parse_signature(commit.committer());
 
-    let revision = Revision {
+    Ok(Revision {
         directory: oid_to_array(tree_oid)?,
         parents: commit
             .parents()
@@ -83,9 +88,7 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
         committer_timestamp_offset,
         extra_headers: Vec::new(), // FIXME: does not seem to be exposed by git2
         message: Some(commit.message_bytes().into()),
-    };
-
-    Ok(revision.swhid())
+    })
 }
 
 /// Compute a SWHID v1.2 release identifier from a Git tag
@@ -93,6 +96,11 @@ pub fn revision_swhid(repo: &Repository, commit_oid: &git2::Oid) -> Result<Swhid
 /// This implements the SWHID v1.2 release hashing algorithm for Git tags,
 /// creating a `swh:1:rel:<digest>` identifier according to the specification.
 pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, SwhidError> {
+    release_from_git(repo, tag_oid).map(|rel| rel.swhid())
+}
+
+#[doc(hidden)]
+pub fn release_from_git(repo: &Repository, tag_oid: &git2::Oid) -> Result<Release, SwhidError> {
     use crate::release::ObjectType;
 
     let tag = repo
@@ -116,7 +124,7 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
         None => (None, None, None),
     };
 
-    let release = Release {
+    Ok(Release {
         object: oid_to_array(target_oid)?,
         object_type: match target.kind() {
             Some(GitObjectType::Commit) => ObjectType::Revision,
@@ -131,9 +139,7 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
         author_timestamp_offset,
         extra_headers: Vec::new(), // FIXME: does not seem to be exposed by git2
         message: tag.message_bytes().map(Into::into),
-    };
-
-    Ok(release.swhid())
+    })
 }
 
 /// Compute a SWHID v1.2 snapshot identifier from a Git repository
@@ -141,6 +147,11 @@ pub fn release_swhid(repo: &Repository, tag_oid: &git2::Oid) -> Result<Swhid, Sw
 /// This implements the SWHID v1.2 snapshot hashing algorithm for Git repositories,
 /// creating a `swh:1:snp:<digest>` identifier according to the specification.
 pub fn snapshot_swhid(repo: &Repository) -> Result<Swhid, SwhidError> {
+    snapshot_from_git(repo).map(|snp| snp.swhid())
+}
+
+#[doc(hidden)]
+pub fn snapshot_from_git(repo: &Repository) -> Result<Snapshot, SwhidError> {
     let references = repo
         .references()
         .map_err(|e| io_error(format!("Failed to list references: {e}")))?;
@@ -155,8 +166,7 @@ pub fn snapshot_swhid(repo: &Repository) -> Result<Swhid, SwhidError> {
         .collect::<Result<_, _>>()?;
 
     Snapshot::new(branches)
-        .map_err(|e| io_error(format!("Invalid snapshot: {e}")))?
-        .swhid()
+        .map_err(|e| io_error(format!("Invalid snapshot: {e}")))
 }
 
 fn reference_to_branch(reference: git2::Reference<'_>) -> Result<Option<Branch>, SwhidError> {
