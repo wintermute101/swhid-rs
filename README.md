@@ -92,7 +92,7 @@ use std::path::PathBuf;
     let release_swhid = git::release_swhid(&repo, &tag_oid)?;
     
     // Get snapshot SWHID v1.2
-    let snapshot_swhid = git::snapshot_swhid(&repo, &head_commit)?;
+    let snapshot_swhid = git::snapshot_swhid(&repo)?;
 }
 
 # Ok::<_, Box<dyn std::error::Error>>(())
