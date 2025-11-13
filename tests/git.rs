@@ -239,5 +239,8 @@ fn test_snapshot_swhid() {
     // Checked against the implementation in https://archive.softwareheritage.org/swh:1:dir:60e683f48069373ee85227f2d7ab2eb1a8873ddb;origin=https://gitlab.softwareheritage.org/swh/devel/swh-model.git;visit=swh:1:snp:291aefbdccd43abac57629431201c2fd55284df7;anchor=swh:1:rev:9e54500902fc00ab1e6400431e2803b9bb41cc0a
     // using:
     // Snapshot({b"refs/heads/tree-branch": SnapshotBranch(target=bytes.fromhex("0efb37b28c53c7e4fbd253bb04a4df14008f63fe"), target_type=TargetType.DIRECTORY), b"refs/heads/main": SnapshotBranch(target=bytes.fromhex("07cde6575fb633ef9b5ecbe730e6eb97475a2fd9"), target_type=TargetType.REVISION), b"refs/tags/v1.0": SnapshotBranch(target=bytes.fromhex("46d326edb8bfc49b757ccd09930365595806bfc0"), target_type=TargetType.RELEASE)}).swhid()
-    assert_eq!(snapshot_swhid(&repo).unwrap().to_string(), "swh:1:snp:9cb40c81deb6a8c6280705b7ff4c9e953f2edfa6");
+    assert_eq!(
+        snapshot_swhid(&repo).unwrap().to_string(),
+        "swh:1:snp:9cb40c81deb6a8c6280705b7ff4c9e953f2edfa6"
+    );
 }
