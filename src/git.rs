@@ -161,7 +161,7 @@ pub fn snapshot_from_git(repo: &Repository) -> Result<Snapshot, SwhidError> {
 
     let branches: Vec<_> = references
         .flat_map(|reference| match reference {
-            Ok(reference) => reference_to_branch(reference).transpose(),
+            Ok(reference) => reference_to_branch(repo, reference).transpose(),
             Err(e) => Some(Err(io_error(format!("Failed to read reference: {e}")))),
         })
         .collect::<Result<_, _>>()?;
@@ -169,7 +169,10 @@ pub fn snapshot_from_git(repo: &Repository) -> Result<Snapshot, SwhidError> {
     Snapshot::new(branches).map_err(|e| io_error(format!("Invalid snapshot: {e}")))
 }
 
-fn reference_to_branch(reference: git2::Reference<'_>) -> Result<Option<Branch>, SwhidError> {
+fn reference_to_branch(
+    repo: &Repository,
+    reference: git2::Reference<'_>,
+) -> Result<Option<Branch>, SwhidError> {
     if !reference.is_branch() && !reference.is_tag() {
         return Ok(None);
     }
@@ -197,21 +200,15 @@ fn reference_to_branch(reference: git2::Reference<'_>) -> Result<Option<Branch>,
             BranchTarget::Revision(None)
         }
         Some(git2::ReferenceType::Direct) => {
-            let Some(expected_target_id) = reference.target() else {
+            let Some(target_id) = reference.target() else {
                 return Err(io_error(format!(
                     "Reference {} has Direct kind, but has no target",
                     String::from_utf8_lossy(&name)
                 )));
             };
-            let target = reference.peel(git2::ObjectType::Any).map_err(|e| {
-                io_error(format!(
-                    "Failed to peel reference to {expected_target_id}: {e}"
-                ))
-            })?;
-            let target_id = target.id();
-            if target_id != expected_target_id {
-                return Err(io_error(format!("Reference {} has target {expected_target_id} but .peel(Any) returns a different target: {target_id}", String::from_utf8_lossy(&name))));
-            }
+            let target = repo
+                .find_object(target_id, None)
+                .map_err(|e| io_error(format!("Could not find object {target_id}: {e}")))?;
             let target_id = oid_to_array(target_id)?;
             match target.kind() {
                 None => {

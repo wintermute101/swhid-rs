@@ -6,6 +6,7 @@ use git2::{Repository, Signature, Time};
 use swhid::git::*;
 use swhid::release::{ObjectType, Release};
 use swhid::revision::Revision;
+use swhid::snapshot::{Branch, BranchTarget, Snapshot};
 
 fn bs(s: &'static str) -> Box<[u8]> {
     s.as_bytes().into()
@@ -148,4 +149,95 @@ fn test_release_swhid() {
         swhid.to_string(),
         "swh:1:rel:46d326edb8bfc49b757ccd09930365595806bfc0"
     );
+}
+
+#[test]
+fn test_snapshot_swhid() {
+    let tmp = assert_fs::TempDir::new().unwrap();
+    let repo = Repository::init(tmp.path()).unwrap();
+
+    // Create content
+    let mut index = repo.index().unwrap();
+    let file_path = tmp.child("test.txt");
+    file_path.write_str("test content").unwrap();
+
+    // Create directory
+    index
+        .add_path(file_path.path().strip_prefix(tmp.path()).unwrap())
+        .unwrap();
+    let tree_oid = index.write_tree().unwrap();
+    let tree_hash = hex::decode("0efb37b28c53c7e4fbd253bb04a4df14008f63fe")
+        .unwrap()
+        .try_into()
+        .unwrap();
+    assert_eq!(oid_to_array(tree_oid), tree_hash);
+    let tree = repo.find_tree(tree_oid).unwrap();
+
+    // Add reference directly to a tree
+    repo.reference(
+        "refs/heads/tree-branch",
+        tree_oid,
+        /* force: */ false,
+        "log message",
+    )
+    .unwrap();
+
+    // Create commit
+    let sig = Signature::new("Test User", "test@example.com", &Time::new(1763027354, 60)).unwrap();
+    let commit_oid = repo
+        .commit(
+            Some("refs/heads/main"),
+            &sig,
+            &sig,
+            "Test commit",
+            &tree,
+            &[],
+        )
+        .unwrap();
+    let commit_hash = hex::decode("07cde6575fb633ef9b5ecbe730e6eb97475a2fd9")
+        .unwrap()
+        .try_into()
+        .unwrap();
+    assert_eq!(oid_to_array(commit_oid), commit_hash);
+
+    // Create tag
+    let tag_oid = repo
+        .tag(
+            "v1.0",
+            &tree.into_object(),
+            &sig,
+            "Test tag",
+            /* force: */ false,
+        )
+        .unwrap();
+    let tag_hash = hex::decode("46d326edb8bfc49b757ccd09930365595806bfc0")
+        .unwrap()
+        .try_into()
+        .unwrap();
+    assert_eq!(oid_to_array(tag_oid), tag_hash);
+
+    let snp = snapshot_from_git(&repo).unwrap();
+    assert_eq!(
+        snp,
+        Snapshot::new(vec![
+            Branch {
+                name: bs("refs/heads/main"),
+                target: BranchTarget::Revision(Some(commit_hash)),
+            },
+            Branch {
+                name: bs("refs/tags/v1.0"),
+                target: BranchTarget::Release(Some(tag_hash)),
+            },
+            Branch {
+                name: bs("refs/heads/tree-branch"),
+                target: BranchTarget::Directory(Some(tree_hash)),
+            },
+        ])
+        .unwrap(),
+    );
+
+    // Checked against the implementation in https://archive.softwareheritage.org/swh:1:dir:60e683f48069373ee85227f2d7ab2eb1a8873ddb;origin=https://gitlab.softwareheritage.org/swh/devel/swh-model.git;visit=swh:1:snp:291aefbdccd43abac57629431201c2fd55284df7;anchor=swh:1:rev:9e54500902fc00ab1e6400431e2803b9bb41cc0a
+    // using:
+    // Snapshot({b"refs/heads/tree-branch": SnapshotBranch(target=bytes.fromhex("0efb37b28c53c7e4fbd253bb04a4df14008f63fe"), target_type=TargetType.DIRECTORY), b"refs/heads/main": SnapshotBranch(target=bytes.fromhex("07cde6575fb633ef9b5ecbe730e6eb97475a2fd9"), target_type=TargetType.REVISION), b"refs/tags/v1.0": SnapshotBranch(target=bytes.fromhex("46d326edb8bfc49b757ccd09930365595806bfc0"), target_type=TargetType.RELEASE)}).swhid()
+    assert_eq!(snapshot_swhid(&repo).unwrap().to_string(), "swh:1:snp:9cb40c81deb6a8c6280705b7ff4c9e953f2edfa6");
 }
