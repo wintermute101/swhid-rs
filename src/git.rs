@@ -159,12 +159,23 @@ pub fn snapshot_from_git(repo: &Repository) -> Result<Snapshot, SwhidError> {
         .references()
         .map_err(|e| io_error(format!("Failed to list references: {e}")))?;
 
-    let branches: Vec<_> = references
+    let mut branches: Vec<_> = references
         .flat_map(|reference| match reference {
             Ok(reference) => reference_to_branch(repo, reference).transpose(),
             Err(e) => Some(Err(io_error(format!("Failed to read reference: {e}")))),
         })
         .collect::<Result<_, _>>()?;
+
+    let head = repo
+        .head()
+        .map_err(|e| io_error(format!("Failed to get HEAD: {e}")))?;
+    if let Some(head_branch) = reference_to_branch(repo, head)? {
+        let Branch { name, target: _ } = head_branch;
+        branches.push(Branch {
+            name: (*b"HEAD").into(),
+            target: BranchTarget::Alias(Some(name)),
+        });
+    }
 
     Snapshot::new(branches).map_err(|e| io_error(format!("Invalid snapshot: {e}")))
 }
