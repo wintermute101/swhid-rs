@@ -12,7 +12,7 @@ use crate::utils::check_unique;
 
 const DIRECTORY_MODE: u32 = 0o040000;
 const FILE_MODE: u32 = 0o100644;
-const EXECUTABLE_FILE_MODE: u32 = 0o100644;
+const EXECUTABLE_FILE_MODE: u32 = 0o100755;
 
 /// Options for SWHID v1.2 directory walking and hashing.
 #[derive(Debug, Clone, Default)]
@@ -117,9 +117,9 @@ fn path_file_mode(meta: &fs::Metadata) -> u32 {
             DIRECTORY_MODE
         } else if meta.is_file() {
             if exec {
-                FILE_MODE
-            } else {
                 EXECUTABLE_FILE_MODE
+            } else {
+                FILE_MODE
             }
         } else {
             FILE_MODE
