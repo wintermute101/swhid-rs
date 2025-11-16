@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::Bytestring;
+
 /// Errors that may occur while parsing SWHIDs or computing hashes.
 #[derive(Debug, Error)]
 pub enum SwhidError {
@@ -25,5 +27,23 @@ pub enum SwhidError {
     InvalidQualifierValue { key: String, value: String },
 
     #[error("I/O error: {0}")]
-    Io(String),
+    Io(#[source] std::io::Error),
+}
+
+/// Errors that may occur while building a [`Directory`](crate::Directory)
+#[derive(Debug, Error)]
+pub enum DirectoryError {
+    #[error("Duplicate entry name: {}", String::from_utf8_lossy(.0))]
+    DuplicateEntryName(Bytestring),
+    #[error("Invalid byte {byte} in name: {}", String::from_utf8_lossy(.name))]
+    InvalidByteInName { byte: u8, name: Bytestring },
+}
+
+/// Errors that may occur while building a [`Snapshot`](crate::Snapshot)
+#[derive(Debug, Error)]
+pub enum SnapshotError {
+    #[error("Duplicate branch name: {}", String::from_utf8_lossy(.0))]
+    DuplicateBranchName(Bytestring),
+    #[error("Invalid byte {byte} in name: {}", String::from_utf8_lossy(.name))]
+    InvalidByteInName { byte: u8, name: Bytestring },
 }

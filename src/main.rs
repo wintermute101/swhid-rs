@@ -82,8 +82,6 @@ enum GitCommand {
     Snapshot {
         /// Git repository path
         repo: PathBuf,
-        /// Commit hash (if omitted, use HEAD)
-        commit: Option<String>,
     },
     /// List all tags in a repository
     Tags {
@@ -198,15 +196,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let swhid = git::release_swhid(&repo, &tag_oid)?;
                 println!("{swhid}");
             }
-            GitCommand::Snapshot { repo, commit } => {
+            GitCommand::Snapshot { repo } => {
                 let repo = git::open_repo(&repo)?;
-                let commit_oid = if let Some(commit_str) = commit {
-                    git2::Oid::from_str(&commit_str)
-                        .map_err(|e| format!("Invalid commit hash: {e}"))?
-                } else {
-                    git::get_head_commit(&repo)?
-                };
-                let swhid = git::snapshot_swhid(&repo, &commit_oid)?;
+                let swhid = git::snapshot_swhid(&repo)?;
                 println!("{swhid}");
             }
             GitCommand::Tags { repo } => {

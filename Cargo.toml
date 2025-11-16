@@ -17,21 +17,15 @@ git = ["dep:git2"]
 hex = "0.4"
 thiserror = "1"
 percent-encoding = "2"
-url = { version = "2", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 clap = { version = "4", features = ["derive"] }
 sha1collisiondetection = { version = "0.3" }
 git2 = { version = "0.20", optional = true }
 
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 tempfile = "3"
 assert_fs = "1"
-predicates = "3"
 
 [[bench]]
 name = "swhid_benchmarks"
