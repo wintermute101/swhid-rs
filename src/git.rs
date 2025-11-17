@@ -51,23 +51,9 @@ fn parse_signature(sig: Signature) -> (Bytestring, i64, Bytestring) {
 }
 
 /// Returns key-value pairs and the message
-fn parse_object_with_header(
-    mut manifest: &[u8],
-) -> Result<(Vec<(&[u8], Bytestring)>, &[u8]), SwhidError> {
+fn parse_header(mut manifest: &[u8]) -> Result<Vec<(&[u8], Bytestring)>, SwhidError> {
     let mut headers = Vec::new();
-    loop {
-        match manifest.split_first() {
-            None => {
-                // nothing else to read, and no message
-                return Ok((headers, b""));
-            }
-            Some((b'\n', message)) => {
-                // Empty line, meaning end of headers
-                return Ok((headers, message));
-            }
-            _ => {} // new key-value pair
-        }
-
+    while !manifest.is_empty() {
         // Pop first line
         let Some(newline_position) = manifest.iter().position(|&byte| byte == b'\n') else {
             return Err(io_error("Header line is missing a line end".to_owned()));
@@ -91,8 +77,7 @@ fn parse_object_with_header(
             let line = &manifest[..newline_position];
             match line.split_first() {
                 None => {
-                    // last line of the manifest
-                    break;
+                    return Err(io_error("Empty line".to_owned()));
                 }
                 Some((b' ', value_line)) => {
                     // continuation line
@@ -104,10 +89,12 @@ fn parse_object_with_header(
                     break;
                 }
             }
-            manifest = &manifest[newline_position+1..];
+            manifest = &manifest[newline_position + 1..];
         }
         headers.push((key, value.into_boxed_slice()));
     }
+
+    Ok(headers)
 }
 
 /// Compute a SWHID v1.2 revision identifier from a Git commit
@@ -137,7 +124,7 @@ pub fn revision_from_git(
     let (committer, committer_timestamp, committer_timestamp_offset) =
         parse_signature(commit.committer());
 
-    let (headers, _message) = parse_object_with_header(commit.raw_header_bytes())?;
+    let headers = parse_header(commit.raw_header_bytes())?;
 
     let extra_headers = headers
         .into_iter()
