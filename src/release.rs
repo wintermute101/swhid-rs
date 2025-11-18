@@ -53,7 +53,7 @@ pub fn rel_manifest(rev: &Release) -> Vec<u8> {
         match object_type {
             ReleaseTargetType::Revision => b"commit".as_ref(),
             ReleaseTargetType::Directory => b"tree".as_ref(),
-            ReleaseTargetType::Release => b"release".as_ref(),
+            ReleaseTargetType::Release => b"tag".as_ref(),
             ReleaseTargetType::Content => b"blob".as_ref(),
         },
     );
