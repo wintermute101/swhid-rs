@@ -50,6 +50,53 @@ fn parse_signature(sig: Signature) -> (Bytestring, i64, Bytestring) {
     (full_name.into(), when.seconds(), offset.into_bytes().into())
 }
 
+/// Returns key-value pairs and the message
+fn parse_header(mut manifest: &[u8]) -> Result<Vec<(&[u8], Bytestring)>, SwhidError> {
+    let mut headers = Vec::new();
+    while !manifest.is_empty() {
+        // Pop first line
+        let Some(newline_position) = manifest.iter().position(|&byte| byte == b'\n') else {
+            return Err(io_error("Header line is missing a line end".to_owned()));
+        };
+        let first_line = &manifest[..newline_position];
+        manifest = &manifest[newline_position + 1..];
+
+        // The first line is a key and a value. Extract the key and the first line of the value
+        let Some(delimiter_position) = first_line.iter().position(|&byte| byte == b' ') else {
+            return Err(io_error("Header line is missing a value".to_owned()));
+        };
+        let key = &first_line[..delimiter_position];
+        if key.is_empty() {
+            return Err(io_error("Empty key".to_owned()));
+        };
+        let mut value = first_line[delimiter_position + 1..].to_vec();
+
+        // Read line by line until we find one that does not start
+        // with a space, which is the next key-value.
+        while let Some(newline_position) = manifest.iter().position(|&byte| byte == b'\n') {
+            let line = &manifest[..newline_position];
+            match line.split_first() {
+                None => {
+                    return Err(io_error("Empty line".to_owned()));
+                }
+                Some((b' ', value_line)) => {
+                    // continuation line
+                    value.push(b'\n');
+                    value.extend_from_slice(value_line);
+                }
+                Some(_) => {
+                    // new key-value pair
+                    break;
+                }
+            }
+            manifest = &manifest[newline_position + 1..];
+        }
+        headers.push((key, value.into_boxed_slice()));
+    }
+
+    Ok(headers)
+}
+
 /// Compute a SWHID v1.2 revision identifier from a Git commit
 ///
 /// This implements the SWHID v1.2 revision hashing algorithm for Git commits,
@@ -77,6 +124,14 @@ pub fn revision_from_git(
     let (committer, committer_timestamp, committer_timestamp_offset) =
         parse_signature(commit.committer());
 
+    let headers = parse_header(commit.raw_header_bytes())?;
+
+    let extra_headers = headers
+        .into_iter()
+        .filter(|(key, _value)| !matches!(*key, b"tree" | b"parent" | b"author" | b"committer"))
+        .map(|(key, value)| (key.into(), value))
+        .collect();
+
     Ok(Revision {
         directory: oid_to_array(tree_oid)?,
         parents: commit
@@ -89,7 +144,7 @@ pub fn revision_from_git(
         committer,
         committer_timestamp,
         committer_timestamp_offset,
-        extra_headers: Vec::new(), // FIXME: does not seem to be exposed by git2
+        extra_headers,
         message: Some(commit.message_bytes().into()),
     })
 }
