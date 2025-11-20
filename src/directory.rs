@@ -43,7 +43,7 @@ impl Entry {
         self.mode & DIRECTORY_MODE != 0
     }
 
-    fn name_for_sort(&self) -> Cow<[u8]> {
+    fn name_for_sort(&self) -> Cow<'_, [u8]> {
         if self.is_dir() {
             let mut name = Vec::from(self.name.clone());
             name.push(b'/');
