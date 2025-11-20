@@ -12,6 +12,7 @@ use crate::utils::check_unique;
 
 const DIRECTORY_MODE: u32 = 0o040000;
 const FILE_MODE: u32 = 0o100644;
+#[allow(dead_code)] // Used on Unix systems, appears unused on Windows
 const EXECUTABLE_FILE_MODE: u32 = 0o100755;
 
 /// Options for SWHID v1.2 directory walking and hashing.
