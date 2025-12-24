@@ -124,7 +124,7 @@ swhid verify --file README.md --expected 'swh:1:cnt:...'
 
 ## License
 
-Dual-licensed under **MIT** or **Apache-2.0** at your option.
+Licensed under **MIT**.
 
 ## References
 
