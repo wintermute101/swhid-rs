@@ -1,5 +1,4 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use std::path::Path;
 use swhid::{
     ByteRange, Content, DiskDirectoryBuilder, LineRange, QualifiedSwhid, Swhid, WalkOptions,
 };
@@ -42,12 +41,12 @@ fn bench_hash_functions(c: &mut Criterion) {
 
     let data = vec![0u8; 1024];
 
-    group.bench_function("hash_blob", |b| {
-        b.iter(|| swhid::hash::hash_blob(black_box(&data)))
+    group.bench_function("hash_content", |b| {
+        b.iter(|| swhid::hash::hash_content(black_box(&data)))
     });
 
-    group.bench_function("hash_object", |b| {
-        b.iter(|| swhid::hash::hash_object(black_box("blob"), black_box(&data)))
+    group.bench_function("hash_swhid_object", |b| {
+        b.iter(|| swhid::hash::hash_swhid_object(black_box("blob"), black_box(&data)))
     });
 
     group.finish();
