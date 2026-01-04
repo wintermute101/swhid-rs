@@ -128,6 +128,6 @@ Licensed under **MIT**.
 
 ## References
 
-- [Software Heritage Identifier specification v1.6](https://docs.softwareheritage.org/devel/swh-model/persistent-identifiers.html)
+- [Software Hash Identifier specification](https://swhid.org/swhid-specification/v1.2/)
 - **ISO/IEC 18670:2025** — International standard for Software Heritage Identifiers
 - **Software Heritage** — [softwareheritage.org](https://www.softwareheritage.org/)
