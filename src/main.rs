@@ -133,7 +133,8 @@ fn parse_permissions_policy(s: &str) -> Result<PermissionPolicy, Box<dyn std::er
         _ => Err(format!(
             "Invalid permissions policy: {}. Must be strict or best-effort",
             s
-        ).into()),
+        )
+        .into()),
     }
 }
 
@@ -164,7 +165,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let perm_policy = parse_permissions_policy(&permissions_policy)?;
 
             if perm_source == PermissionsSourceKind::Manifest && permissions_manifest.is_none() {
-                return Err("--permissions-manifest is required when --permissions-source=manifest".into());
+                return Err(
+                    "--permissions-manifest is required when --permissions-source=manifest".into(),
+                );
             }
 
             let build_opts = DirectoryBuildOptions {
@@ -177,8 +180,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
             };
 
-            let dir = DiskDirectoryBuilder::new(&path)
-                .with_build_options(build_opts);
+            let dir = DiskDirectoryBuilder::new(&path).with_build_options(build_opts);
             let swhid = dir.swhid()?;
             println!("{swhid}");
         }
@@ -205,7 +207,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let perm_policy = parse_permissions_policy(&permissions_policy)?;
 
             if perm_source == PermissionsSourceKind::Manifest && permissions_manifest.is_none() {
-                return Err("--permissions-manifest is required when --permissions-source=manifest".into());
+                return Err(
+                    "--permissions-manifest is required when --permissions-source=manifest".into(),
+                );
             }
 
             let expected: Swhid = swhid.parse()?;
@@ -222,8 +226,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         exclude_suffixes: exclude,
                     },
                 };
-                let dir = DiskDirectoryBuilder::new(&path)
-                    .with_build_options(build_opts);
+                let dir = DiskDirectoryBuilder::new(&path).with_build_options(build_opts);
                 dir.swhid()?
             } else {
                 eprintln!(

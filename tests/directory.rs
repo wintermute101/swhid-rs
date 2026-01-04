@@ -332,17 +332,21 @@ fn manifest_based_directory_building() {
     // Note: Entry.name is private, so we check via the manifest
     let manifest = dir_manifest(dir.entries().to_vec()).unwrap();
     // The manifest should contain entries in sorted order
-    assert!(manifest.windows(b"file1.txt".len()).any(|w| w == b"file1.txt"));
-    assert!(manifest.windows(b"script.sh".len()).any(|w| w == b"script.sh"));
+    assert!(manifest
+        .windows(b"file1.txt".len())
+        .any(|w| w == b"file1.txt"));
+    assert!(manifest
+        .windows(b"script.sh".len())
+        .any(|w| w == b"script.sh"));
     assert!(manifest.windows(b"subdir".len()).any(|w| w == b"subdir"));
 }
 
 #[test]
 #[cfg(unix)]
 fn unix_filesystem_permission_source() {
-    use swhid::permissions::{FilesystemPermissionsSource, PermissionsSource};
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
+    use swhid::permissions::{FilesystemPermissionsSource, PermissionsSource};
     use tempfile::TempDir;
 
     let tmp = TempDir::new().unwrap();
@@ -396,21 +400,29 @@ executable = false
 
     // Test known paths
     assert_eq!(
-        source.executable_of(std::path::Path::new("bin/tool")).unwrap(),
+        source
+            .executable_of(std::path::Path::new("bin/tool"))
+            .unwrap(),
         swhid::permissions::EntryExec::Known(true)
     );
     assert_eq!(
-        source.executable_of(std::path::Path::new("scripts/run.sh")).unwrap(),
+        source
+            .executable_of(std::path::Path::new("scripts/run.sh"))
+            .unwrap(),
         swhid::permissions::EntryExec::Known(true)
     );
     assert_eq!(
-        source.executable_of(std::path::Path::new("data.txt")).unwrap(),
+        source
+            .executable_of(std::path::Path::new("data.txt"))
+            .unwrap(),
         swhid::permissions::EntryExec::Known(false)
     );
 
     // Test unknown path
     assert_eq!(
-        source.executable_of(std::path::Path::new("unknown.txt")).unwrap(),
+        source
+            .executable_of(std::path::Path::new("unknown.txt"))
+            .unwrap(),
         swhid::permissions::EntryExec::Unknown
     );
 }

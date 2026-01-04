@@ -19,8 +19,8 @@ pub use core::{ObjectType, Swhid};
 pub use directory::{Directory, DiskDirectoryBuilder, Entry, WalkOptions};
 pub use directory::{DirectoryBuildOptions, ManifestEntry};
 pub use permissions::{
-    EntryExec, EntryPerms, PermissionPolicy, PermissionsSource, PermissionsSourceKind,
-    resolve_file_permissions,
+    resolve_file_permissions, EntryExec, EntryPerms, PermissionPolicy, PermissionsSource,
+    PermissionsSourceKind,
 };
 pub use qualifier::{ByteRange, LineRange, QualifiedSwhid};
 pub use release::{Release, ReleaseTargetType};

@@ -8,7 +8,8 @@ use crate::core::{ObjectType, Swhid};
 use crate::error::DirectoryError;
 use crate::hash::{hash_content, hash_swhid_object};
 use crate::permissions::{
-    EntryPerms, PermissionPolicy, PermissionsSource, PermissionsSourceKind, resolve_file_permissions,
+    resolve_file_permissions, EntryPerms, PermissionPolicy, PermissionsSource,
+    PermissionsSourceKind,
 };
 use crate::utils::check_unique;
 
@@ -84,13 +85,12 @@ impl Entry {
 impl From<ManifestEntry> for Entry {
     fn from(manifest: ManifestEntry) -> Self {
         // Convert Vec<u8> to [u8; 20] for v1 compatibility
-        let id_array: [u8; 20] = manifest.target.try_into()
-            .unwrap_or_else(|v: Vec<u8>| {
-                let mut arr = [0u8; 20];
-                let len = v.len().min(20);
-                arr[..len].copy_from_slice(&v[..len]);
-                arr
-            });
+        let id_array: [u8; 20] = manifest.target.try_into().unwrap_or_else(|v: Vec<u8>| {
+            let mut arr = [0u8; 20];
+            let len = v.len().min(20);
+            arr[..len].copy_from_slice(&v[..len]);
+            arr
+        });
         Entry {
             name: manifest.name.into_boxed_slice(),
             mode: manifest.perms.to_swh_mode_u32(),
@@ -170,12 +170,8 @@ fn read_dir(
 
     // Create permission source based on options
     let permission_source: Box<dyn PermissionsSource> = match opts.permissions_source {
-        PermissionsSourceKind::Auto => {
-            Box::new(AutoPermissionsSource::new(root)?)
-        }
-        PermissionsSourceKind::Filesystem => {
-            Box::new(FilesystemPermissionsSource)
-        }
+        PermissionsSourceKind::Auto => Box::new(AutoPermissionsSource::new(root)?),
+        PermissionsSourceKind::Filesystem => Box::new(FilesystemPermissionsSource),
         #[cfg(feature = "git")]
         PermissionsSourceKind::GitIndex => {
             let repo = git2::Repository::open(root).map_err(|e| {
@@ -257,13 +253,12 @@ fn read_dir(
 
         if ft.is_dir() {
             let nested_entries = read_dir(&entry.path(), root, opts)?;
-            let manifest = dir_manifest(nested_entries)
-                .map_err(|e: DirectoryError| {
-                    crate::error::SwhidError::Io(std::io::Error::other(format!(
-                        "Failed to build directory manifest: {}",
-                        e
-                    )))
-                })?;
+            let manifest = dir_manifest(nested_entries).map_err(|e: DirectoryError| {
+                crate::error::SwhidError::Io(std::io::Error::other(format!(
+                    "Failed to build directory manifest: {}",
+                    e
+                )))
+            })?;
             let id = hash_swhid_object("tree", &manifest);
             children.push(Entry {
                 name: name_bytes,
@@ -298,11 +293,7 @@ fn read_dir(
 
             // Use permission source to determine executable bit
             let exec = permission_source.executable_of(&entry.path())?;
-            let perms = resolve_file_permissions(
-                exec,
-                opts.permissions_policy,
-                &entry.path(),
-            )?;
+            let perms = resolve_file_permissions(exec, opts.permissions_policy, &entry.path())?;
             let mode = perms.to_swh_mode_u32();
 
             children.push(Entry {
@@ -400,8 +391,7 @@ impl<'a> DiskDirectoryBuilder<'a> {
 
     pub fn build(self) -> Result<Directory, crate::error::SwhidError> {
         let entries = read_dir(self.root, self.root, &self.opts)?;
-        Directory::new(entries)
-            .map_err(|e| crate::error::SwhidError::Io(std::io::Error::other(e)))
+        Directory::new(entries).map_err(|e| crate::error::SwhidError::Io(std::io::Error::other(e)))
     }
 
     /// Compute the SWHID v1.2 directory identifier for this directory.

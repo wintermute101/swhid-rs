@@ -120,14 +120,12 @@ pub fn resolve_file_permissions(
 ) -> Result<EntryPerms, SwhidError> {
     match (exec, policy) {
         (EntryExec::Known(executable), _) => Ok(EntryPerms::File { executable }),
-        (EntryExec::Unknown, PermissionPolicy::Strict) => {
-            Err(SwhidError::InvalidFormat(format!(
-                "Cannot determine executable bit for {} on this platform. \
+        (EntryExec::Unknown, PermissionPolicy::Strict) => Err(SwhidError::InvalidFormat(format!(
+            "Cannot determine executable bit for {} on this platform. \
                 Options: use --permissions-source git-index, provide a permission manifest, \
                 or use --permissions-policy best-effort",
-                path.display()
-            )))
-        }
+            path.display()
+        ))),
         (EntryExec::Unknown, PermissionPolicy::BestEffort) => {
             // Default to non-executable
             Ok(EntryPerms::File { executable: false })
@@ -148,12 +146,13 @@ impl PermissionsSource for FilesystemPermissionsSource {
         {
             use std::fs;
             use std::os::unix::fs::PermissionsExt;
-            let metadata = fs::metadata(path)
-                .map_err(|e| SwhidError::Io(std::io::Error::other(format!(
+            let metadata = fs::metadata(path).map_err(|e| {
+                SwhidError::Io(std::io::Error::other(format!(
                     "Failed to read metadata for {}: {}",
                     path.display(),
                     e
-                ))))?;
+                )))
+            })?;
             let mode = metadata.permissions().mode();
             let executable = (mode & 0o111) != 0;
             Ok(EntryExec::Known(executable))
@@ -187,19 +186,22 @@ impl GitIndexPermissionsSource {
 impl PermissionsSource for GitIndexPermissionsSource {
     fn executable_of(&self, path: &Path) -> Result<EntryExec, SwhidError> {
         // Get relative path from repo root
-        let rel_path = path
-            .strip_prefix(&self.root)
-            .map_err(|_| SwhidError::InvalidFormat(format!(
+        let rel_path = path.strip_prefix(&self.root).map_err(|_| {
+            SwhidError::InvalidFormat(format!(
                 "Path {} is not under repository root {}",
                 path.display(),
                 self.root.display()
-            )))?;
+            ))
+        })?;
 
         // Convert to forward slashes for Git
         let git_path = rel_path.to_string_lossy().replace('\\', "/");
 
         let index = self.repo.index().map_err(|e| {
-            SwhidError::Io(std::io::Error::other(format!("Failed to read Git index: {}", e)))
+            SwhidError::Io(std::io::Error::other(format!(
+                "Failed to read Git index: {}",
+                e
+            )))
         })?;
 
         // Find entry in index
@@ -236,13 +238,13 @@ impl GitTreePermissionsSource {
 impl PermissionsSource for GitTreePermissionsSource {
     fn executable_of(&self, path: &Path) -> Result<EntryExec, SwhidError> {
         // Get relative path from repo root
-        let rel_path = path
-            .strip_prefix(&self.root)
-            .map_err(|_| SwhidError::InvalidFormat(format!(
+        let rel_path = path.strip_prefix(&self.root).map_err(|_| {
+            SwhidError::InvalidFormat(format!(
                 "Path {} is not under repository root {}",
                 path.display(),
                 self.root.display()
-            )))?;
+            ))
+        })?;
 
         // Convert to forward slashes for Git
         let git_path = rel_path.to_string_lossy().replace('\\', "/");
@@ -252,7 +254,10 @@ impl PermissionsSource for GitTreePermissionsSource {
             SwhidError::Io(std::io::Error::other(format!("Failed to get HEAD: {}", e)))
         })?;
         let commit = head.peel_to_commit().map_err(|e| {
-            SwhidError::Io(std::io::Error::other(format!("Failed to get commit: {}", e)))
+            SwhidError::Io(std::io::Error::other(format!(
+                "Failed to get commit: {}",
+                e
+            )))
         })?;
         let tree = commit.tree().map_err(|e| {
             SwhidError::Io(std::io::Error::other(format!("Failed to get tree: {}", e)))
@@ -278,15 +283,13 @@ impl PermissionsSource for GitTreePermissionsSource {
                                 e
                             )))
                         })?;
-                        current_tree = obj
-                            .peel_to_tree()
-                            .map_err(|e| {
-                                SwhidError::InvalidFormat(format!(
-                                    "Expected tree at {}: {}",
-                                    path_parts[..=i].join("/"),
-                                    e
-                                ))
-                            })?;
+                        current_tree = obj.peel_to_tree().map_err(|e| {
+                            SwhidError::InvalidFormat(format!(
+                                "Expected tree at {}: {}",
+                                path_parts[..=i].join("/"),
+                                e
+                            ))
+                        })?;
                     }
                 }
                 Err(_) => {
@@ -549,7 +552,10 @@ mod tests {
         let path = Path::new("test.txt");
         let result = resolve_file_permissions(EntryExec::Unknown, PermissionPolicy::Strict, path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cannot determine executable bit"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot determine executable bit"));
     }
 
     #[test]
@@ -562,4 +568,3 @@ mod tests {
         );
     }
 }
-
