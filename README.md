@@ -81,15 +81,15 @@ use std::path::PathBuf;
     use swhid::git;
 
     let repo = git::open_repo(&PathBuf::from("/path/to/git/repo"))?;
-    
+
     // Get HEAD commit SWHID v1.2
     let head_commit = git::get_head_commit(&repo)?;
     let revision_swhid = git::revision_swhid(&repo, &head_commit)?;
-    
+
     // Get tag SWHID v1.2
     let tag_oid = repo.refname_to_id("refs/tags/v1.0.0")?;
     let release_swhid = git::release_swhid(&repo, &tag_oid)?;
-    
+
     // Get snapshot SWHID v1.2
     let snapshot_swhid = git::snapshot_swhid(&repo)?;
 }
